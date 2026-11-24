@@ -71,7 +71,7 @@ interface Setup {
   /** Test-only: false disables the MCP-only next-step shim below, to prove registration still requires them. */
   shim?: boolean
   lookup?: (sessionID: string) => Promise<unknown>
-  /** A host that reports a missing agent as a plain Error, as stock 2.2.3 to 2.2.6 do. */
+  /** A host that reports a missing agent as a plain Error. */
   plainAgentError?: boolean
   unavailableDetail?: NonNullable<ToolsRpcOptions["mcp"]>["unavailableDetail"]
   notRegistered?: NonNullable<ToolsRpcOptions["mcp"]>["notRegistered"]
@@ -92,7 +92,7 @@ interface Harness {
 }
 
 /**
- * The MCP-only next steps a block whose tools are all its own (GWS, History, Utilities, Jobs) may omit. The suite's fake
+ * The MCP-only next steps a block whose tools are all its own may omit. The suite's fake
  * MCP table needs them, so a setup that uses it supplies a test-only value for each missing one. The shared module is
  * not changed: this is the suite's own shim, and it never overrides a step the block declares.
  */
