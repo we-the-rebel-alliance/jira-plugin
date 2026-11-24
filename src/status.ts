@@ -103,8 +103,10 @@ const AGENTS_NEXT_STEP =
 
 const NOTHING_TO_DO = "Nothing to do."
 
-/** What the two captured rows say before the user's own first read has happened. */
-const NOT_READ_YET = "not read yet: it appears after the first Jira call since OpenCode started"
+/** What the rows say before a read through the tools RPC has happened; a probe fills the account row too. */
+const NOT_READ_YET = "not read yet: it appears after the first script read since OpenCode started"
+/** The account row's note: a probe names the account without a resources read. */
+const ACCOUNT_NOT_READ_YET = "not read yet: it appears after the first script read or probe since OpenCode started"
 
 const TESTED_TEXT = TESTED_HOSTS.length === 1 ? TESTED_HOSTS[0]! : `${TESTED_HOSTS.slice(0, -1).join(", ")} or ${TESTED_HOSTS.at(-1)}`
 const LISTED_UNKNOWN = 20
@@ -229,7 +231,7 @@ function toolsText({ tools, unknownCount, unknownTools, destructiveTools, notGra
 
 const list = (names: readonly string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`)
 
-/** The Sites row: the names the user's own resources read returned, or a note that it has not run. */
+/** The Sites row: the names a script's resources read returned, or a note that it has not run. */
 function sitesText(sites: readonly string[]) {
   if (!sites.length) return NOT_READ_YET
   const more = sites.length - LISTED_SITES
@@ -299,7 +301,7 @@ export function formatStatus(status: Status) {
   return [
     "Jira status",
     `- Connection: ${STATE_TEXT[status.state]}${details ? ` (${details})` : ""}`,
-    `- Account: ${status.account ?? NOT_READ_YET}`,
+    `- Account: ${status.account ?? ACCOUNT_NOT_READ_YET}`,
     `- Access: ${accessText(status)}`,
     `- Sites: ${sitesText(status.sites)}`,
     `- Tools: ${toolsText(status)}`,

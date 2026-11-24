@@ -256,6 +256,8 @@ function eventsRequest(input: unknown): EventsListRequest {
 export interface SignedIn {
   readonly account: string
   readonly owner: EventsOwner
+  /** The display name the identity read gave, when it gave one; never the account id. */
+  readonly name?: string
 }
 
 /**
@@ -296,9 +298,10 @@ export function signedInOf(answer: unknown, method: string = PROBE): SignedIn {
   const user = isRecord(data["user"]) ? (data["user"] as Data) : data
   const id = text(user["accountId"]) ?? text(user["account_id"])
   if (id === undefined || !ACCOUNT_ID.test(id)) throw unreadable(IDENTITY_TOOL, method)
-  const name = text(user["displayName"]) ?? text(user["name"]) ?? text(user["nickname"])
-  const label = cut((name ?? id).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim(), EVENT_LIMITS.ownerLabel) || id
-  return { account: accountOf(id), owner: { id: cut(`atlassian:${id}`, EVENT_LIMITS.ownerId), label } }
+  const raw = text(user["displayName"]) ?? text(user["name"]) ?? text(user["nickname"])
+  const name = raw === undefined ? undefined : cut(raw.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim(), EVENT_LIMITS.ownerLabel) || undefined
+  const label = name ?? id
+  return { account: accountOf(id), owner: { id: cut(`atlassian:${id}`, EVENT_LIMITS.ownerId), label }, ...(name === undefined ? {} : { name }) }
 }
 
 // ── Sites ───────────────────────────────────────────────────────────────
@@ -634,7 +637,7 @@ export async function jiraProbe(read: Read, input: unknown, record: (signedIn: S
 // ── The tool and the tools RPC methods ──────────────────────────────────
 
 const DESCRIPTION =
-  "For Memory's collector and scripts, not for answering questions: lists the Jira work items that changed for the signed-in person, as probe names them, " +
+  "For a collector and scripts, not for answering questions: lists the Jira work items that changed for the signed-in person, as probe names them, " +
   "(assigned, reported or watching) since a cursor, on every Jira site the sign-in reaches, as normalised events, oldest first: " +
   "one per work item each time a read finds it updated (several updates between two reads are one, the latest), with its key and summary, status, type and priority, assignee and reporter, and link, and never its description or comments. " +
   "A work item is listed once it was updated 5 minutes ago. Pass the previous result's cursor to list what came after; without a cursor it starts at since, or 24 hours ago. " +
@@ -658,6 +661,8 @@ export interface EventsOptions {
   readonly signIn: () => Promise<string | undefined>
   /** Who each sign-in is, as probe or a listing read it. */
   readonly signIns: SignIns
+  /** Called after a probe's identity read names the person, for status; the display name only. */
+  readonly identity?: (signedIn: SignedIn) => void
   /** The clock; tests fix it. */
   readonly now?: () => number
 }
@@ -826,7 +831,10 @@ export function probeMethod(options: EventsOptions): OwnedMethod {
       await assertAction(options, PROBE_ACTION, context)
       const signIn = (await options.signIn().catch(() => undefined)) ?? ""
       const since = options.signIns.generation
-      return jiraProbe(reader(options, context, PROBE), input, (signedIn) => options.signIns.keep(signIn, signedIn, since))
+      return jiraProbe(reader(options, context, PROBE), input, (signedIn) => {
+        options.signIns.keep(signIn, signedIn, since)
+        options.identity?.(signedIn)
+      })
     },
     available: availability(options),
   }

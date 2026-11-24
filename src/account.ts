@@ -103,11 +103,10 @@ interface Capture {
 }
 
 /**
- * Every running plugin instance's capture. The tools RPC's reads skip the `execute.after` hook, and its result shaping
- * learns neither the instance nor the location that served the call, so it tells every instance. That is right only
- * while they share OpenCode's one Atlassian sign-in. An instance whose project adopts its own entry with an API token may
- * be another person's account, so while any instance does, a script's account read updates no status: the model path,
- * whose hook belongs to its own instance, still does.
+ * Every running plugin instance's capture. A tools RPC read learns neither the instance nor the location that served the
+ * call, so it tells every instance. That is right only while they share OpenCode's one Atlassian sign-in. An instance
+ * whose project adopts its own entry with an API token may be another person's account, so while any instance does, a
+ * script's account read updates no status; a probe still fills its own instance's account row.
  */
 const captures = new Set<Capture>()
 
@@ -119,13 +118,12 @@ export function captureAccount(tool: string, result: Result): void {
 
 
 /**
- * Captures the account and its sites from the model's own calls to the two account reads, and from the tools RPC's, and
- * forgets them when the user signs out or switches accounts. Makes no Atlassian call. Returns the current values and a
- * cleanup.
+ * Captures the account and its sites from the tools RPC's reads, and the display name from a probe, and forgets them
+ * when the user signs out or switches accounts. Makes no Atlassian call. Returns the current values, a way to record a
+ * probe's display name, and a cleanup.
  */
 export async function watchAccount(
   ctx: {
-    readonly tool: Pick<Plugin.Context["tool"], "hook">
     readonly mcp: Pick<Plugin.Context["mcp"], "list">
     readonly event: Pick<Plugin.Context["event"], "subscribe">
   },
@@ -144,10 +142,6 @@ export async function watchAccount(
       if (sites) account = { ...account, sites }
     }
   }
-  const hook = await ctx.tool.hook("execute.after", async (event) => {
-    const tool = [ACCOUNT_TOOL, SITES_TOOL].find((name) => event.tool === `${SERVER_NAME}_${name}`)
-    if (tool && event.status === "completed" && owned()) capture(tool, event.result)
-  })
   const entry: Capture = { capture, ownSignIn, owned }
   captures.add(entry)
 
@@ -182,13 +176,17 @@ export async function watchAccount(
 
   return {
     current: () => (Object.keys(account).length ? account : undefined),
+    /** Records the display name a probe read for this instance's sign-in; nothing else of it is kept. */
+    captureName: (name: string) => {
+      const shown = clean(name, NAME_LIMIT)
+      if (shown) account = { ...account, name: shown }
+    },
     /** Forgets the account, for a status read that finds the server signed out. */
     forget: () => void (account = {}),
     stop: async () => {
       stopped.abort()
       captures.delete(entry)
       await watching
-      await hook.dispose()
     },
   }
 }

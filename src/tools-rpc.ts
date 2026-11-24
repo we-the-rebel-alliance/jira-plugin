@@ -37,14 +37,14 @@ export const METHODS: readonly MethodSpec[] = [
   ...DESTRUCTIVE_TOOLS.map((name): MethodSpec => ({ kind: "mcp", name, class: "destructive" })),
 ]
 
-/** What the model path's `execute.before` hooks do to an MCP call's arguments. Jira has no such hook. */
+/** What the tools RPC does to an MCP call's arguments before dispatch: Jira changes none. */
 export function shapeInput(_method: string, input: unknown, _call: ShapeCall): unknown {
   return input
 }
 
 /**
- * What the model path's `execute.after` hook does to a result, which the executor skips: the two account reads record the
- * display name and the site names that status shows, with the hook's own function. The result itself is unchanged.
+ * What the tools RPC does to a result: the two account reads record the display name and the site names that status
+ * shows, with the capture's own function. The result itself is unchanged.
  */
 export function shapeResult(method: string, result: McpResult, _call: ShapeCall): McpResult {
   if (method === ACCOUNT_TOOL || method === SITES_TOOL) captureAccount(method, { output: result.output, content: result.text })

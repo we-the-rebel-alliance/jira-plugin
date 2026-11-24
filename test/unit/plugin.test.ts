@@ -144,7 +144,6 @@ function context(options: unknown, version = "2.4.1") {
     tool: {
       transform: tool.transform,
       list: async () => [{ id: "jira_searchJiraIssuesUsingJql", execute: async () => ({ content: [{ type: "text", text: "ok" }] }) }],
-      hook: async (name: string) => (hooks.push(`tool:${name}`), { dispose: async () => void hooks.splice(hooks.indexOf(`tool:${name}`), 1) }),
     },
     location: { directory: "/projects/jira-test" },
     permission: { hook: async (name: string) => (hooks.push(name), { dispose: async () => void hooks.splice(hooks.indexOf(name), 1) }) },
@@ -196,9 +195,9 @@ describe("setup", () => {
     expect(NAMESPACE_DESCRIPTION).not.toContain(ENDPOINT)
     expect(NAMESPACE_DESCRIPTION).not.toContain("http")
     expect(rpc).toEqual(["jira.issues", "jira.issues.tools"])
-    // The tools RPC's one evaluate hook, and the account read's hook: the account and site rows come from the user's own
-    // calls, never from a call the plugin makes.
-    expect(hooks.sort()).toEqual(["evaluate", "tool:execute.after"])
+    // The tools RPC's one evaluate hook. Nothing registers execute.before or execute.after: the tools RPC's account
+    // reads and a probe fill the account rows.
+    expect(hooks.sort()).toEqual(["evaluate"])
     expect(typeof cleanup).toBe("function")
     await cleanup!()
     expect(rpc).toEqual(["jira.issues"])

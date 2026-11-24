@@ -373,6 +373,12 @@ describe("probe", () => {
     expect(signedInOf({ account_id: "5b10a2844c20165700ede21g", name: "Sam Okafor", email: "sam.okafor@example.com" })).toEqual({
       account: "5b10a2844c20165700ede21g",
       owner: { id: "atlassian:5b10a2844c20165700ede21g", label: "Sam Okafor" },
+      name: "Sam Okafor",
+    })
+    // No name in the answer: the label falls back to the id, and status keeps no display name.
+    expect(signedInOf({ account_id: "5b10a2844c20165700ede21g" })).toEqual({
+      account: "5b10a2844c20165700ede21g",
+      owner: { id: "atlassian:5b10a2844c20165700ede21g", label: "5b10a2844c20165700ede21g" },
     })
     expect(() => signedInOf({ data: { accountId: "has space" } })).toThrow(/^UNAVAILABLE: /)
   })
@@ -461,12 +467,20 @@ describe("reading through OpenCode's executors", () => {
     expect(method.output).toBe(EVENTS_OUTPUT)
   })
 
-  test("probe records who the sign-in is, and events_list then reads the fixture through the executors for that account", async () => {
+  test("probe records who the sign-in is and hands its display name to status, and events_list then reads the fixture through the executors for that account", async () => {
     const calls: string[] = []
     const known = signIns()
-    const opts = sourceOptions(FIXTURE, { permission: { assert: async () => {} } }, calls, known)
-    expect(await probeMethod(opts).run({}, call())).toMatchObject({ account: ACCOUNT })
-    expect(known.get("cred_conformance")).toEqual(SIGNED)
+    const named = { ...FIXTURE, me: { ...FIXTURE.me, displayName: "Pilot Owner" } }
+    const names: string[] = []
+    const opts = {
+      ...sourceOptions(named, { permission: { assert: async () => {} } }, calls, known),
+      identity: (signedIn: { readonly name?: string }) => {
+        if (signedIn.name) names.push(signedIn.name)
+      },
+    }
+    expect(await probeMethod(opts).run({}, call())).toMatchObject({ account: ACCOUNT, owner: { label: "Pilot Owner" } })
+    expect(names).toEqual(["Pilot Owner"])
+    expect(known.get("cred_conformance")).toEqual({ ...SIGNED, owner: { ...SIGNED.owner, label: "Pilot Owner" }, name: "Pilot Owner" })
     const page = (await eventsMethod(opts).run({ since: "2026-11-12T00:00:00Z" }, call())) as { account: string; events: unknown[] }
     expect(page).toMatchObject({ account: ACCOUNT })
     expect(page.events).toHaveLength(3)

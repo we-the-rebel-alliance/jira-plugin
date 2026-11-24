@@ -10,7 +10,8 @@ import { allow } from "./fake.js"
 
 const SIGN_IN = "Run /connect and choose Jira, then press o or Enter to open the link (in a terminal, opencode mcp auth jira opens it automatically; run it from the project folder, and if it answers MCP server not found: jira, wait a few seconds and run it again)."
 const NOTHING_TO_DO = "Nothing to do."
-const NOT_READ_YET = "not read yet: it appears after the first Jira call since OpenCode started"
+const NOT_READ_YET = "not read yet: it appears after the first script read since OpenCode started"
+const ACCOUNT_NOT_READ_YET = "not read yet: it appears after the first script read or probe since OpenCode started"
 /** The default rules as /jira-status shows them: one rule a line, a JSON array body. */
 const AGENT_RULES = (access: "all" | "ask-changes" | "read-only" = "all") => defaultRules(access).map((rule, index, rules) => `  ${JSON.stringify(rule)}${index < rules.length - 1 ? "," : ""}`).join("\n")
 
@@ -72,7 +73,7 @@ describe("buildStatus", () => {
     expect(status).not.toHaveProperty("account")
     expect(status.sites).toEqual([])
     const text = formatStatus(status)
-    expect(text).toContain(`- Account: ${NOT_READ_YET}\n`)
+    expect(text).toContain(`- Account: ${ACCOUNT_NOT_READ_YET}\n`)
     expect(text).toContain(`- Sites: ${NOT_READ_YET}\n`)
     expect(text).not.toContain("@")
     expect(buildStatus({ ...base, account: { name: "" } })).not.toHaveProperty("account")
