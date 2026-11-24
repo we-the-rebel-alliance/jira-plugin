@@ -24,10 +24,11 @@ OpenCode project.
   credential. Status shows server URLs with only the `?tools=all` query, never OpenCode's text for a needed sign-in,
   which can hold an authorization URL, and cuts a connection failure's reason to one line with no URL credentials,
   query or token.
-- **The account capture keeps a display name and site names, in memory only.** It reads nothing else of
-  `atlassianUserInfo` or `getAccessibleAtlassianResources`: no email address, account id, avatar URL, cloud id, app or
-  scope. Both are forgotten when the server needs a new sign-in, the credential is updated or the account is switched. Status never calls either
-  tool itself, and makes no Atlassian call.
+- **The account capture keeps a display name and site names, in memory only.** A read through the tools RPC fills both,
+  and a probe fills the display name; the model's own calls fill neither. It reads nothing else of `atlassianUserInfo`
+  or `getAccessibleAtlassianResources`: no email address, account id, avatar URL, cloud id, app or scope. Both are
+  forgotten when the server needs a new sign-in, the credential is updated or the account is switched. Status never
+  calls either tool itself, and makes no Atlassian call.
 - **The `jira.activity` source reads only when a collector or a script calls it.** `probe` reads `atlassianUserInfo`
   for the account id, and keeps it in memory for that sign-in, forgotten on a new sign-in or another account; a
   listing that does not know the sign-in yet (after a restart) makes that same read itself, once, and keeps it the same
@@ -56,7 +57,7 @@ OpenCode project.
 - **One line restricts it.** Set `"access": "ask-changes"` in the plugin options and every change asks first, or
   `"access": "read-only"` and every change is denied. A rule in an agent's own `permissions` restricts one agent, and a
   `deny` in the top-level `permissions` restricts every agent. The README's
-  [Permissions](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/README.md#permissions) has the three blocks.
+  [Permissions](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/README.md#permissions) has the block.
 - Six of the seven destructive tools are also not granted by the plugin's pinned request, so Atlassian never loads
   them: the three permanent deletes, the three project and screen settings, and the opaque entity-property writer. No
   admin can add that scope to this client: a new release of the plugin would have to request it and an admin would have

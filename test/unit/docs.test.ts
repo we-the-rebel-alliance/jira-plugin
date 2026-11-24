@@ -28,9 +28,6 @@ const raw = (file: string) => readFileSync(join(ROOT, file), "utf8")
 const text = (file: string) => raw(file).replace(/\s+/g, " ")
 const skillFiles = readdirSync(join(ROOT, "skills")).map((name) => [`${name}`, readFileSync(join(ROOT, "skills", name, "SKILL.md"), "utf8")] as const)
 
-/** No release is named: the plugin has no version yet, so every install line is the package's repository. */
-const VERSIONS = /\b0\.\d+\.\d+\b|\bv\d+\.\d+\.\d+\b|opencode-jira/
-
 describe("docs", () => {
   test.each(FILES)("%s states no count of read, write or declared tools that could go stale", (file) => {
     const counts = [...text(file).matchAll(/\b\d+ (?:known )?(?:read|write)(?:s\b| tools\b| read-only)/g)].map((match) => match[0])
@@ -63,11 +60,13 @@ describe("docs", () => {
     }
   })
 
-  test("the README names no version of the plugin, and every install line is this repository", () => {
+  test("the README installs from a release tag, never from an untagged repository, and names the first release", () => {
     const readme = text("README.md")
-    expect(readme).not.toMatch(VERSIONS)
-    expect(readme).toContain(`opencode plugin add ${REPO}`)
-    expect(readme).toContain(`"package": "${REPO}"`)
+    const installs = [...raw("README.md").matchAll(/opencode plugin add ([^\s`]+)/g)].map((match) => match[1]!)
+    expect(installs).toEqual([`${REPO}#v<version>`])
+    expect(readme).toContain(`"package": "${REPO}#v<version>"`)
+    expect(readme).toContain("The first release on plugin-contract is `v0.0.0` (phase 4b).")
+    expect(readme).toContain("the repository carries no `dist/`, and OpenCode runs no build when it installs from Git.")
   })
 
   test("the README's first lines say every tool is allowed by default", () => {
@@ -173,7 +172,7 @@ describe("docs", () => {
 
   // R9: shipped text states behaviour, never who decided it, and names no lane.
   test("the shipped docs use no internal wording", () => {
-    const banned = /\bowner(?:'s)? (?:decision|ruling|sign-off|call)\b|\bthe lead(?:'s)? (?:decision|ruling|audit|report|review)\b|\bhey-jelly\s*#|\b(?:audit|review|reconcile) lane\s+[A-Z]\d\b|\blane\s+G\d\b/i
+    const banned = /\bowner(?:'s)? (?:decision|ruling|sign-off|call)\b|\bthe lead(?:'s)? (?:decision|ruling|audit|report|review)\b|\bhey-\w+\s*#|\b(?:audit|review|reconcile) lane\s+[A-Z]\d\b|\blane\s+G\d\b/i
     for (const file of FILES) expect({ file, hit: banned.exec(text(file))?.[0] }).toEqual({ file, hit: undefined })
   })
 

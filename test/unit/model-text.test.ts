@@ -10,7 +10,7 @@ import { NAMESPACE_DESCRIPTION } from "../../src/constants.js"
 const ROOT = fileURLToPath(new URL("../..", import.meta.url))
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8")
 
-/** Every sentence the model is given: the namespace, the skills, the Jelly line. */
+/** Every sentence the model is given: the namespace, the skills, the `jelly` summary line. */
 export function modelTexts(): [string, string][] {
   const jelly = JSON.parse(read("package.json")) as { jelly: { summary: string } }
   return [

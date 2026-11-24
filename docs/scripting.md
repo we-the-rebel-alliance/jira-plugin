@@ -35,9 +35,10 @@ what a script writes where those people would expect it, and only as long as you
 
 ## The jira.activity source
 
-`events_list` and `probe` are the source contract's two methods, for a collector such as Memory. `probe` reads
+`events_list` and `probe` are the source contract's two methods, for a collector: an app that binds this source and
+lists its events. `probe` reads
 `atlassianUserInfo` and answers `{ source, account, owner, trust }`; it also records who this sign-in is, which every
-listing names. A listing needs no probe before it: when the plugin does not know who is signed in yet (after a start of
+listing names, and the display name status shows. A listing needs no probe before it: when the plugin does not know who is signed in yet (after a start of
 OpenCode, or a new sign-in, since it keeps this in memory only), the listing makes the same `atlassianUserInfo` read
 itself, once, and keeps the answer, so a call that names another `account` is still `ACCOUNT_MISMATCH`. `events_list` takes `{ since?, cursor?, limit?, account?, source? }` and answers a page of events, oldest
 first, with a `cursor` to pass next time and `more` while there is more now. It reads `getAccessibleAtlassianResources`
@@ -196,5 +197,5 @@ and `rpc.invalid_input` for a body that is not the envelope above, with one mess
 - Use a token or a key: the plugin has none to give.
 
 A script's calls write nothing to the session, and OpenCode's `execute.before` and `execute.after` tool hooks, from any
-plugin, do not run for them. The plugin applies the same result shaping it applies on the model path: a script's account
-read fills the account name and site names for status, as the model's call does.
+plugin, do not run for them. A script's account read through the tools RPC fills the account name and site names for
+status; the model's own calls do not.

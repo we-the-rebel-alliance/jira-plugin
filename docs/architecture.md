@@ -14,7 +14,7 @@ or a script calls it. It has no runtime dependencies: the source contract's modu
 | `src/plugin.ts` | Setup, server registration or adoption, and the URL comparison that decides it |
 | `src/integration.ts` | The `/connect` entry: its name "Jira", and the sign-in problem on its account |
 | `src/listing.ts` | When the `jira` server's status last changed, so status can tell a server still listing its tools from one that lists none |
-| `src/account.ts` | The account name and the site names from the user's own two account reads, kept in memory, and the `execute.after` hook that captures them |
+| `src/account.ts` | The display name a script's tools RPC read or a probe records, and the site names a script's read records, kept in memory |
 | `src/options.ts` | Option parsing and validation |
 | `src/host-version.ts` | The host check: the supported range, and the tested releases |
 | `src/jira-tools.ts` | `READ_TOOLS`, `EXPORT_TOOLS`, `WRITE_TOOLS`, `DESTRUCTIVE_TOOLS`, `NOT_GRANTED_TOOLS`, `PARAMETERS` and `classify()`: every fact the plugin keeps about Jira's tools. No runtime imports, so `scripts/check-jira-tools.mjs` (`npm run drift`) can load it. `PARAMETERS` is used by that script and the tests only, and the build leaves it out; it stays empty until a tool list from a signed-in server is recorded, because Atlassian publishes no schemas |
@@ -53,9 +53,10 @@ typechecks. The package exports `.` (`dist/index.js`) and `./tui` (`dist/tui.js`
    another origin or a local command is a conflict, nothing is added, and status reports it.
 5. `ctx.tool.transform` gives the `jira` namespace its Code Mode description.
 6. `ctx.agent.transform` inserts the default rules after each agent's base `* * allow`.
-7. `watchListing` notes when the `jira` server's status last changes, and `watchAccount` installs the one
-   `execute.after` hook: the two account reads record the display name and the site names, and are forgotten on a
-   sign-out or an account switch. The plugin calls neither read itself.
+7. `watchListing` notes when the `jira` server's status last changes, and `watchAccount` keeps the display name a
+   script's tools RPC read or a probe records, and the site names a script's read records, forgotten on a sign-out or an
+   account switch. The plugin calls neither account read itself, and registers no `execute.before` or `execute.after`
+   hook.
 8. `ctx.skill.transform`, `ctx.command.transform` (`/jira-status`) and `ctx.rpc.register` (`jira.issues/status`).
 9. `registerToolsRpc` registers the tools RPC, `jira.issues.tools`, and its `evaluate` hook.
 10. `watchIntegration` starts. Setup returns one cleanup that stops it, disposes the tools RPC, and stops the listing
@@ -82,7 +83,8 @@ projects it, and clears only its own message once the server is connected again.
 
 `readStatus` reads the server's state (`ctx.mcp.list()`), the `jira` tools (`ctx.tool.list()`, by the namespace `jira`),
 every agent's rules (`ctx.agent.list()`) and the skills OpenCode lists (`ctx.skill.list()`); the account name and the
-site names come from the capture, never from a call. `buildStatus` turns them into one model, and `formatStatus` renders
+site names come from a script's tools RPC read or a probe, never from a call status makes. `buildStatus` turns them into
+one model, and `formatStatus` renders
 it in a fixed order: Connection (state and server), Account (the captured display name, or "not read yet"), Access (the
 permission posture, and what the default rules let run), Sites (the captured site names, names only), Tools (counts, the
 destructive class, the three not granted by scope, and up to 20 unknown names), Agents without default rules (names, then the
@@ -139,7 +141,7 @@ instead of refusing them. So the envelope's schema carries a strict Standard Sch
 OpenCode answers a bad envelope with `rpc.invalid_input`.
 
 The executor does not run `execute.before` and `execute.after` hooks. For the two account reads, `shapeResult` captures
-the same two fields the hook would, so a script's call fills the rows too; every other result passes unchanged.
+the display name and the site names, so a script's call fills the rows; every other result passes unchanged.
 
 ## Terminal UI part
 

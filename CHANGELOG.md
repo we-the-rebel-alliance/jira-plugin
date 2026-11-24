@@ -18,5 +18,5 @@ The first release of `@we-the-rebel-alliance/jira-plugin`, rebuilt greenfield on
 
 - The `jira.issues` list snapshot and its read path: the tools RPC `events_list` method has no `list` input, and
   `jira.activity` is the plugin's one source.
-- `docs/jelly.md`, the Jelly declaration's prose, and the status field `deniedTools` (use `destructiveTools`).
+- `docs/jelly.md`, the `jelly` declaration's prose, and the status field `deniedTools` (use `destructiveTools`).
 - The stock-host matrices and code paths for OpenCode before 2.4.1.

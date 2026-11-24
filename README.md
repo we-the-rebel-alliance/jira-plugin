@@ -24,21 +24,11 @@ endorsed by them.
 
 ## Install
 
-```sh
-opencode plugin add github:we-the-rebel-alliance/jira-plugin
-```
+Install from a release: `opencode plugin add github:we-the-rebel-alliance/jira-plugin#v<version>`, then run
+`opencode reload`.
 
-Run `opencode reload`, or restart OpenCode. Then run `/jira-status`: it shows `sign-in required` until you sign in
-(see [Sign in](#sign-in)).
-
-Or add the plugin to `opencode.json` instead, with the same spec:
-
-```json
-{ "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin" }] }
-```
-
-The plugin registers Atlassian's MCP server under the name `jira`, adds default permission rules, the `/jira-status`
-command, the `/jira` status view and two skills. It ships a prebuilt `dist/`, so an install runs no build.
+The first release on plugin-contract is `v0.0.0` (phase 4b). Until it is cut, there is no release to install:
+the repository carries no `dist/`, and OpenCode runs no build when it installs from Git.
 
 ## Sign in
 
@@ -78,9 +68,9 @@ Every change can email people, so the model says whom it reaches before it makes
 | `/jira-status` | Posts the status report into the session: connection, account, access, sites, tools, agents without the default rules, the OpenCode check and the next step. |
 | `/jira`, or "Jira: Status" in the command palette | Opens the same report in a dialog. Press `r` to refresh it and `Esc` to close it. |
 
-The Account and Sites rows come from your own first calls in a session (`atlassianUserInfo` and
-`getAccessibleAtlassianResources`). Status makes no Atlassian call of its own, and shows a display name and site names
-only: never an email address, an account id or a cloud id.
+The Account row comes from a read through the tools RPC or from a probe, and the Sites row from a read through the tools
+RPC; the model's own calls fill neither. Status makes no Atlassian call of its own, and shows a display name and site
+names only: never an email address, an account id or a cloud id.
 
 Two skills teach the model to use Jira well:
 
@@ -91,7 +81,7 @@ Two skills teach the model to use Jira well:
 
 ### Jira as a source
 
-`package.json`'s `sources` declares `jira.activity`, which a collector such as Memory reads with no model, in Code Mode
+`package.json`'s `sources` declares `jira.activity`, which a collector reads with no model, in Code Mode
 or through the tools RPC. `events_list` (`jira_events_list`) lists what changed for you since a cursor, oldest first:
 one event per work item each time a read finds it updated, for every work item you are assigned, reported or watching,
 on each Jira site your sign-in reaches, with metadata only — the key and summary, the update time, the assignee and
@@ -145,7 +135,7 @@ Set options with the object form of the plugin entry:
 
 ```json
 {
-  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin", "options": { "access": "ask-changes" } }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>", "options": { "access": "ask-changes" } }]
 }
 ```
 
@@ -228,7 +218,7 @@ sign-in stays in OpenCode's credential store.
    where the plugin is installed. If it answers `MCP server not found: jira`, OpenCode is still opening that folder:
    wait a few seconds and run it again.
 2. Check: `opencode auth list` no longer lists **Jira**.
-3. Remove the plugin: `opencode plugin remove github:we-the-rebel-alliance/jira-plugin`, then `opencode reload`.
+3. Remove the plugin: `opencode plugin remove github:we-the-rebel-alliance/jira-plugin#v<version>`, then `opencode reload`.
    `opencode mcp list` no longer lists `jira`.
 4. Remove any Jira rules you copied into your agents' own `permissions`.
 

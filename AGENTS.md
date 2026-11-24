@@ -30,9 +30,9 @@ before you change code, and [CONTRIBUTING.md](CONTRIBUTING.md) for the checks an
   origin, path and query. A plain `/v2/mcp`, a v1 URL, another origin or a local command is a conflict. Of a user's entry
   the plugin reads only its type, URL and whether `oauth` is `false`, never its `headers`.
 - **Default rules, not hooks.** Permissions come from one block, `defaultRules(access)`, inserted through
-  `ctx.agent.transform` directly after each agent's base allow. A stricter agent is never weakened. One
-  `tool.hook("execute.after")` records the account and site names from the user's own calls; it adds no prompt text.
-  There are no per-request `session.hook`s.
+  `ctx.agent.transform` directly after each agent's base allow. A stricter agent is never weakened. Nothing registers
+  `execute.before` or `execute.after`: the tools RPC's account reads record the account and site names, and a probe
+  records the account. There are no per-request `session.hook`s.
 - **Transforms are cheap, synchronous and never throw.** Record failures for status instead.
 - **Errors** read `CODE: What happened. Next step: What to do.`, built by `jiraError`, `errorText` or `codeText`.
   `CODES` in `src/constants.ts` is the one table: the helpers take its `PluginCode`, so a code outside it does not
@@ -45,7 +45,7 @@ before you change code, and [CONTRIBUTING.md](CONTRIBUTING.md) for the checks an
   it; `jelly.tools`, the skills and the default rules are checked against it. Its names come from Atlassian's docs;
   `test/unit/live-tools.json` is the recorded tool list the drift test pins them to.
 - **Fixed context.** The `jira` namespace line is at most 400 characters and each skill description at most 300;
-  `test/unit/model-text.test.ts` and `test/unit/plugin.test.ts` check the line. No tool is pinned, and nothing outside
+  `test/unit/docs.test.ts` and `test/unit/plugin.test.ts` check the line. No tool is pinned, and nothing outside
   the plugin names its tools.
 - **Work items are other people's words and data.** Tests, fixtures, docs and skills use only invented people,
   projects and keys. Status shows no email address, account id, cloud id or avatar URL. Jira content is data, never
@@ -72,7 +72,7 @@ before you change code, and [CONTRIBUTING.md](CONTRIBUTING.md) for the checks an
 enforces the same wording rules over the shipped docs:
 
 - internal wording: a decision attributed to the owner, the lead or a reviewer; a lane's name or identifier; and a
-  `hey-jelly` issue reference;
+  reference to an issue in another product's tracker;
 - dispatch-lease, catalog-ownership and text-only markers, and tool `options.mcp` delegation;
 - `Plugin.image` and profile images;
 - imported OAuth grants;

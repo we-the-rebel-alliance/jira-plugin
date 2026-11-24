@@ -4,7 +4,7 @@ Every option is optional. The smallest setup is one entry in `plugins`:
 
 ```json
 {
-  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin" }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>" }]
 }
 ```
 
@@ -12,7 +12,7 @@ To set options, use the object form:
 
 ```json
 {
-  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin", "options": { "allowUntestedHost": true } }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>", "options": { "allowUntestedHost": true } }]
 }
 ```
 
@@ -25,8 +25,8 @@ To set options, use the object form:
 
 How much the default rules restrict. `all` allows every Jira tool; `ask-changes` allows a read and asks for every other
 tool; `read-only` allows a read and denies every other tool, which also hides it from the model. The classes come from
-`src/jira-tools.ts`, so the value decides a tool Atlassian adds later too. [Permissions](#permissions) has the three
-generated blocks.
+`src/jira-tools.ts`, so the value decides a tool Atlassian adds later too. [Permissions](#permissions) has the
+generated block.
 
 ### `allowUntestedHost`
 
@@ -140,8 +140,8 @@ The plugin compares origin, path and query: a plain `/v2/mcp`, a v1 URL, another
 
 OpenCode asserts every MCP call itself, with the action `jira_<tool>` and the resource `*`. The plugin adds its
 block to every agent that starts with the base rule `{ "action": "*", "resource": "*", "effect": "allow" }`, directly
-after that rule. `/jira-status` prints the whole block, rule for rule, and its `Agents without default rules` row
-prints it as a list to paste.
+after that rule. `/jira-status` prints the whole block, rule for rule, under `Agents without default rules`, and only
+when an agent lacks it.
 
 `READ_TOOLS` in `src/jira-tools.ts` lists Jira's read tools, `EXPORT_TOOLS` the one that mints a signed URL,
 `WRITE_TOOLS` its write tools, and `DESTRUCTIVE_TOOLS` the seven that `access: "read-only"` denies and
@@ -292,7 +292,7 @@ Every error from the plugin reads `CODE: What happened. Next step: What to do.`
 For example:
 
 ```text
-OPTIONS_INVALID: Unknown option "apiKey". Accepted options: "allowUntestedHost", "access". Next step: Fix the plugin options in opencode.json, for example "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin", "options": { "access": "ask-changes" } }].
+OPTIONS_INVALID: Unknown option "apiKey". Accepted options: "allowUntestedHost", "access". Next step: Fix the plugin options in opencode.json, for example "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>", "options": { "access": "ask-changes" } }].
 ```
 
 Errors from Atlassian's server and from OpenCode pass through unchanged, including `invalid_token`, a refusal for a scope
@@ -313,8 +313,8 @@ token, no header and no URL query, and makes no Atlassian call. `version`, `host
 | `state` | `connected`, `sign_in_required`, `connecting`, `disabled`, `failed`, `not_configured` or `conflict`. The `Connection` row shows the same states as `connected`, `sign-in required`, `connecting`, `disabled`, `failed`, `not configured` and `conflict`. |
 | `error` | For a failed connection only: OpenCode's reason, on one line of at most 160 characters, with any URL cut before its query. The text for a needed sign-in can hold an authorization URL, so it is never shown. |
 | `source` | `type` (`plugin`, `adopted` or `conflict`), `url`, `signIn` (`oauth`, or `own` for your own entry with `"oauth": false`), `scope` for an adopted entry (`pinned`, `missing`, `wider`, `narrower` or `token`), and for a conflict the `expected` URL |
-| `account` | The display name from your last `atlassianUserInfo` result, on one line of at most 80 characters; absent before one. Never an email address or an account id. |
-| `sites` | The site names from your last `getAccessibleAtlassianResources` result, at most ten, in its order; empty before one. Never a cloud id, a URL or an app. |
+| `account` | The display name a read through the tools RPC, or a probe, recorded from `atlassianUserInfo`, on one line of at most 80 characters; absent before one. Never an email address or an account id. |
+| `sites` | The site names a read through the tools RPC recorded from `getAccessibleAtlassianResources`, at most ten, in its order; empty before one. Never a cloud id, a URL or an app. |
 | `tools` | How many Jira tools OpenCode lists that the plugin knows; a tool Atlassian adds is counted under `unknownCount`. |
 | `destructiveTools` | The listed tools of the destructive class, such as `editJiraEntityProperty`. What happens to them follows `access`. |
 | `notGranted` | The three known reads this plugin's scope does not grant, so Atlassian never lists them. Empty for your own entry, whose scope is its own. |

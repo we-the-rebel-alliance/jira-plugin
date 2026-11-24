@@ -5,7 +5,8 @@ Read [AGENTS.md](AGENTS.md) first: it lists the rules for this repository and th
 
 ## Set up
 
-You need Node.js 24, npm, and [Bun](https://bun.sh). CI and the release use Node.js 24 and Bun 1.4.5.
+You need Node.js 24, npm, and [Bun](https://bun.sh). CI and the release use Node.js 24; CI runs Bun 1.4.5, and the
+release builds with Bun 1.4.4, the Bun every stock OpenCode host in `TESTED_HOSTS` bundles.
 
 ```sh
 npm ci --ignore-scripts
@@ -38,13 +39,13 @@ npm run check
 | Stage | What it does |
 | --- | --- |
 | `typecheck` | `tsc --noEmit` over `src/` and `test/`, strict, with unused names as errors |
-| `unit` | `bun test ./test/unit`: every module in `src/`, the docs' counts and error table, and the Jelly declaration |
+| `unit` | `bun test ./test/unit`: every module in `src/`, the docs' counts and error table, and the `jelly` declaration |
 | `conformance` | `bun scripts/conformance.ts` (`npm run conformance`): the source contract's conformance kit over `jira.activity`, against `test/fixtures/conformance.json`, writing `reports/conformance-report.json`; fails unless the report is ok |
 | `build` | `node scripts/build.mjs`: deletes `dist/` and bundles `src/index.ts` and `src/tui.ts` with esbuild into the self-contained `dist/index.js` and `dist/tui.js`. Fails if a bundle imports anything the host does not provide |
 | `host` | `bun test ./test/host`: the plugin inside an embedded OpenCode host, on the tested release (`@opencode/sdk` 2.4.1) |
 | `pack` | `bun test ./test/pack`: builds, packs and installs the package, imports both entry points, and loads it in stock OpenCode 2.4.1 |
 | `forbidden` | `node scripts/check-forbidden.mjs`: scans `src/`, `test/`, `scripts/` and `dist/` for forbidden APIs and machine-local paths |
-| `copies` | `node scripts/check-copies.mjs`: Jelly's setting rules in `test/support/jelly-settings.ts` and the release kit match the copies every plugin carries; the tools RPC is the source contract's, pinned in `package-lock.json` |
+| `copies` | `node scripts/check-copies.mjs`: the `jelly` setting rules in `test/support/jelly-settings.ts` and the release kit match the copies every plugin carries; the tools RPC is the source contract's, pinned in `package-lock.json` |
 | `lint:actions` | `actionlint` over the workflows, when it is on PATH; CI runs it as its own job |
 | `icons` | `node scripts/check-icons.mjs`: the SVG is clean and exact, the 128 and 256 PNGs exist, and `exports` and `files` agree |
 | `whitelist` | Checks `package.json` against the approved package shape, and that `dist/` holds exactly `index.js` and `tui.js` |
@@ -164,7 +165,7 @@ the tests and `npm run drift -- <saved.json> --strict` then name every name, cla
    no class, runs under the namespace pattern alone, and scripts cannot call it.
 4. Update `PARAMETERS` from the schemas, `jelly.tools` in `package.json`, and any skill text that names a changed tool.
    With parameters recorded, a skill may give a literal call such as `getJiraIssue({ … })`, and the skills test checks
-   its keys against `PARAMETERS`. Run `npm run check`: the Jelly test fails if `jelly.tools` differs from the lists, the
+   its keys against `PARAMETERS`. Run `npm run check`: the `jelly` test fails if `jelly.tools` differs from the lists, the
    skills test if a skill names a tool or parameter the record doesn't have, and the docs test if a doc names a tool in
    no list.
 5. Record the change in `CHANGELOG.md`. Moving a tool between the lists changes the default rules and the tools RPC's
@@ -300,7 +301,7 @@ tag, and restores the ruleset exactly as it was.
 
 **Known limit: a `v*` tag pushed by hand.** No ruleset limits who creates a `v*` tag, so anyone with write access can
 push one by hand, pointing at any commit. Such a tag has no published Release, the forward-only check ignores it, and
-Jelly installs only a published Release whose `SHA256SUMS` it verifies. But a user who installs
+a consumer installs only a published Release whose `SHA256SUMS` it verifies. But a user who installs
 `github:we-the-rebel-alliance/jira-plugin#v<x>` directly gets whatever that tag points at. Only the release workflow makes
 release tags; never push one by hand.
 
@@ -312,6 +313,11 @@ The release kit is these files, the same in every plugin: `scripts/release-rules
 pins each of the scripts whole by its sha256, so a plugin whose copy differs from the family's fails `npm run check`:
 change the kit in every plugin at once, with the new hashes. Do not re-run the older `apply-release-kit.mjs`: it writes
 back the kit that could release only `v0.0.0`.
+
+The copied release planner (`scripts/release-github.mjs`) still requires the family's event-gated macOS matrix in
+`.github/workflows/ci.yml`: its `ciMatrix` reports `no matrix is gated by event` for this repository's one `ci` job, so
+`plan` refuses and no release can be planned from this tree. `npm run check` does not run the planner. 4b's plugin-kit
+replaces the copied kit, with a planner that matches this plugin's CI.
 
 Each release has its own tag, and a Git install does not update by itself. To move to a newer release, remove the old entry with `opencode plugin remove github:we-the-rebel-alliance/jira-plugin#v<old version>`, then add the new tag with `opencode plugin add github:we-the-rebel-alliance/jira-plugin#v<version>`.
 
