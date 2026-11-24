@@ -36,8 +36,9 @@ describe("skills", () => {
     expect(skill.name as string).toBe(name)
     expect(skill.description?.length).toBeGreaterThan(40)
     expect(text.split("\n").filter((line) => line.startsWith("description:"))).toHaveLength(1)
-    // A YAML reader would split the line at either of these.
-    expect(skill.description).not.toMatch(/: | #/)
+    // A YAML reader would split an unquoted line at either of these; a quoted scalar is safe.
+    const line = text.split("\n").find((candidate) => candidate.startsWith("description:")) ?? ""
+    expect(/^description: "[^"]*"$/.test(line) || /^description: '[^']*'$/.test(line) || !/: | #/.test(skill.description!)).toBe(true)
     expect(skill.content.length).toBeGreaterThan(0)
   })
 
@@ -75,16 +76,15 @@ describe("skills", () => {
   })
 
   test("the descriptions claim a Jira key and a Jira link, and route every other tracker and Confluence away", () => {
-    expect(description("jira")).toContain("Load before the first Jira tool call")
-    expect(description("jira")).toContain("(tickets, issues, epics), a key such as PROJ-42 or an atlassian.net link")
-    expect(description("jira")).toContain("JQL search, comments, logged time, boards, sprints, the backlog, story points, versions, filters and dashboards")
-    expect(description("jira")).toContain("Not for Linear issues, GitHub issues, or meetings and transcripts")
-    // Confluence must not be excluded from the skill that knows what to say about it.
-    expect(description("jira")).toContain("Confluence pages are outside this Jira-only plugin and it requests no Confluence access, so say that once rather than searching another app for them")
-    expect(description("jira")).not.toContain("Not for Linear issues, GitHub issues, Confluence pages")
-    expect(description("jira-write")).toContain("Load before any Jira change")
-    expect(description("jira-write")).toContain("converting a work item to a sub-task")
-    expect(description("jira-write")).toContain("before explaining why a delete or a project setting is unavailable")
+    expect(description("jira")).toContain("The user's Jira work items")
+    expect(description("jira")).toContain("keys such as PROJ-42 or atlassian.net links")
+    expect(description("jira")).toContain("JQL, comments, logged time, boards, sprints, backlog, versions and filters")
+    expect(description("jira")).toContain("Not for Linear or GitHub issues")
+    // Confluence must not be searched for, and the one sentence says so once.
+    expect(description("jira")).toContain("No Confluence access: say so once")
+    expect(description("jira-write")).toContain("Before any Jira change")
+    expect(description("jira-write")).toContain("transition, comment, log time, link, attach, watch, move a sprint, release a version or create a board")
+    expect(description("jira-write")).toContain("before explaining why a delete is unavailable")
     for (const name of NAMES) expect(description(name)).not.toMatch(/\bmeeting notes\b|\bschedule a\b|\bpost to Slack\b/i)
   })
 
@@ -93,7 +93,7 @@ describe("skills", () => {
     const theirs = Object.values(NEIGHBOURS).join(" ")
     for (const request of quoted(ours)) expect({ request, inNeighbour: theirs.toLowerCase().includes(request) }).toEqual({ request, inNeighbour: false })
     for (const request of quoted(theirs)) expect({ request, inJira: ours.toLowerCase().includes(request.replace(/<[^>]+>/g, "").trim()) }).toEqual({ request, inJira: false })
-    for (const word of ["work items", "boards", "sprints", "backlog", "story points", "JQL", "logged time", "epics", "Confluence"]) {
+    for (const word of ["work items", "boards", "sprints", "backlog", "atlassian.net", "JQL", "logged time", "Confluence"]) {
       expect(ours).toContain(word)
       expect({ word, inNeighbour: theirs.includes(word) }).toEqual({ word, inNeighbour: false })
     }
@@ -246,7 +246,7 @@ describe("skills", () => {
 
   test.each(NAMES)("%s links only to plain files an agent can read, never to a GitHub page", (name) => {
     const links = read(name).match(/https?:\/\/[^\s)>]*[^\s)>.,]/g) ?? []
-    for (const link of links) expect(link).toMatch(/^https:\/\/raw\.githubusercontent\.com\/joe-broadhead\/opencode-jira\/HEAD\//)
+    for (const link of links) expect(link).toMatch(/^https:\/\/raw\.githubusercontent\.com\/we-the-rebel-alliance\/jira-plugin\/master\//)
   })
 
   test("jira's scripts section creates a session for the script, never borrows one, and calls one at a time", () => {

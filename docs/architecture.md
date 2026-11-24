@@ -43,8 +43,8 @@ typechecks. The package exports `.` (`dist/index.js`) and `./tui` (`dist/tui.js`
 ## Setup
 
 1. `parseOptions` validates `allowUntestedHost`; anything else fails with `OPTIONS_INVALID`.
-2. `checkHost` compares `ctx.app.version` with `>=2.2.3 <2.4.0`, the same range as `opencode.host` in `package.json`.
-   Inside it the plugin starts, and status calls only 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2 tested. Outside it, setup fails with
+2. `checkHost` compares `ctx.app.version` with `>=2.4.1 <2.5.0`, the same range as `opencode.host` in `package.json`.
+   Inside it the plugin starts, and status calls only 2.4.1 tested. Outside it, setup fails with
    `HOST_UNTESTED` unless `allowUntestedHost` is set.
 3. The skills are read from the package's `skills/` folder, before the synchronous skill transform needs them.
 4. `ctx.mcp.transform` registers `jira` at Atlassian's URL with the pinned `oauth.scope`, or adopts the user's own entry
@@ -98,7 +98,7 @@ shown, and a failure's reason is cut to one line of 160 characters with no URL q
 - The RPC method returns the model to the terminal UI and to scripts, with the fields every plugin of this family
   shares (`version`, `host`, `state`, `unguardedAgents`, `nextStep`). Its input and output are JSON Schemas that
   OpenCode validates. A status it cannot read is its declared error `unavailable`, with a next step. The UI part needs
-  the RPC because on OpenCode 2.2.x it receives no plugin options and cannot see the server part's findings.
+  the RPC because it cannot see the server part's findings.
 
 ## Tools RPC
 
@@ -149,24 +149,30 @@ the same two fields the hook would, so a script's call fills the rows too; every
 `mcp.status.changed` for `jira`, `server.connected`, `agent.updated`, `integration.updated`, `credential.updated` and
 `credential.switched`. The newest answer wins, and a refresh never reopens a closed dialog.
 
-## Platform facts
+## Host facts the code relies on
 
-These facts about OpenCode 2.2.3 hold on 2.2.4, 2.2.5 and 2.2.6 too. Links point to the source at tag `v2.2.3`.
+These are the OpenCode 2.4.1 behaviours the plugin is built on; the host, pack and unit tests check each of them on the
+tested release, and the `@opencode/plugin` 2.4.1 declarations are the contract for the APIs used here.
 
-| Topic | Fact | Source |
-| --- | --- | --- |
-| MCP tool permissions | The host asserts every MCP call: action `<server>_<tool>`, resource `*`. A last-matching `deny` on `*` hides the tool. | [`tool/mcp.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/tool/mcp.ts) |
-| Rule evaluation | The last match wins. Saved approvals come after all rules as `allow`. An unattended `ask` is refused. | [`permission.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/permission.ts) |
-| Agent rule order | Built-in agents start from a base `* * allow` and exist before package plugins run. User `permissions`, and agents defined only in user config, come after. | [`config/plugin/agent.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/config/plugin/agent.ts) |
-| User MCP config | `mcp.servers` is applied before package plugins. A later plugin `set` would replace the user's entry. | [`config/plugin/mcp.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/config/plugin/mcp.ts) |
-| MCP sign-in scope | OpenCode first sends the server an unauthenticated `initialize` and reads the 401's `WWW-Authenticate` header. It requests `oauth.scope` if the server entry sets one, else the challenge's `scope`; the MCP SDK falls back to the protected-resource metadata's `scopes_supported`, and adds `offline_access` when the authorization server lists it and the client registers the `refresh_token` grant, which OpenCode always does. Atlassian's 401 names no scope, and its protected-resource metadata lists about 40, so OpenCode would fall back to that list and request all of them; the plugin pins `OAUTH_SCOPE` so the grant is Jira read, write and search only, with no delete, manage or Confluence. The host test and the pack test check that exactly the pinned scope reaches both the registration and the authorization request, against a fake of Atlassian's sign-in server that advertises the whole list. | [`mcp/oauth.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/mcp/oauth.ts); the MCP SDK's `determineScope` |
-| MCP client registration | Without `oauth.client_id`, OpenCode uses a client ID metadata document only when the authorization server advertises `client_id_metadata_document_supported` with the `none` auth method; otherwise it registers a client dynamically, as `client_name: "opencode"` with `token_endpoint_auth_method: "none"`, PKCE S256, a loopback `redirect_uris` and `application_type: "native"`. Atlassian advertises both, so OpenCode uses the client ID metadata document, which registers `http://127.0.0.1/callback` without a port while the listener uses an ephemeral one: the first live sign-in confirms Atlassian accepts it. Setting `oauth.redirect_uri` documents the fallback and makes OpenCode register that exact callback instead. | [`mcp/oauth.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/mcp/oauth.ts) |
-| MCP integrations | Integration ID `mcp_` + the first 16 hex digits of sha1(`<name>\0<url>`), so credentials are kept per name and URL. The query is part of the URL, so `?tools=all` is part of the key. | [`mcp/index.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/mcp/index.ts) |
-| Tool list pagination | A server may page its tool list with a cursor. Whether OpenCode 2.2.x follows it for an MCP server's `tools/list` is unconfirmed for this server: Atlassian calls the `?tools=all` list paginated, and the first live list is what settles it. Until then the rules and `jelly.tools` cover every tool the plugin knows, and a tool that arrives on a later page and is unknown follows `access` through the namespace pattern. | The host test's loopback server answers one page, as OpenCode's own client does |
-| Several sites | Every Atlassian call takes a `cloudId`, and one sign-in may reach several sites. The plugin never chooses one, and status names the sites from the user's own `getAccessibleAtlassianResources` result. | Atlassian's supported tools page; the fake's answer in the tests |
-| Code Mode | MCP tools are in Code Mode by default (`tools.jira.<tool>`). A change called inside a program asks just as a direct call does; a declined ask ends that `execute` call, so the program does not continue past it and the server is never reached. Each tool's signature, with its parameter names, reaches the model; a tool's full description reaches it only through `search()`, so the skills name every tool they use. | [`codemode/tool.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/codemode/tool.ts) |
-| Dialog close paths | A plugin's `ui.dialog.alert` resolves on its dialog's `onClose`. Opening another dialog (`replace`), `clear` (also a click outside), Escape and Ctrl+C all call `onClose` for each dialog they remove, so the `/jira` dialog's `r` key and listeners stop on every path. | The pack test reads each stock release's terminal UI code for this |
-| Credential status | A status set with `integration.connection.status` is not on what `connection.active` returns; `integration.get` projects it as `connections[].status`. A 401 whose token refresh fails removes the credential, so the `/connect` mark is only observable while a credential remains: with a token that has no refresh token. The host test signs in through the loopback callback and the token endpoint, then challenges, and asserts the mark is set and cleared. | The host test, on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2 |
-| UI part options | The UI part of a plugin listed in `opencode.json` gets no plugin options. | Observed on stock 2.2.3, 2.2.4, 2.2.5 and 2.2.6 |
-| Tool executors | `ctx.tool.list()` returns each MCP tool with a callable `execute`, which checks `<server>_<tool>` with the agent's and the session's rules and saved approvals, and gives the `evaluate` hook the call's `source`. A deny is a `Tool.Error` with a cause; the server's `isError` is one without. `execute.before` and `execute.after` hooks do not run for it. Not documented as an entry point: the package test checks it on stock 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2. | [`tool/mcp.ts`](https://github.com/anomalyco/opencode/blob/v2.2.3/packages/core/src/tool/mcp.ts) |
-| RPC input | An RPC input given as a Standard Schema is validated with it; a plain JSON Schema is decoded with Effect, which drops unknown keys of an object that has properties. The package test checks the envelope on stock 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2. | `@opencode/core` 2.2.3, the RPC service's `parse` |
+- **MCP tool permissions.** The host asserts every MCP call itself: action `<server>_<tool>`, resource `*`. A
+  last-matching `deny` on `*` hides the tool from the model.
+- **Rule evaluation.** The last match wins. Saved approvals come after all rules as `allow`, and an unattended `ask` is
+  refused. Built-in agents start from a base `* * allow` and exist before package plugins run; user `permissions` and
+  agents defined only in user config come after.
+- **User MCP config** is applied before package plugins, so a later plugin `set` would replace the user's entry; the
+  plugin adopts a matching entry instead (`src/plugin.ts`).
+- **MCP sign-in scope.** OpenCode requests `oauth.scope` when the server entry sets one, and otherwise falls back to the
+  scopes Atlassian's protected-resource metadata advertises (about 40). The plugin pins `OAUTH_SCOPE`; the host and
+  pack tests check that exactly the pinned scope reaches the registration and the authorization request.
+- **MCP integrations.** The integration id is `mcp_` plus the first 16 hex digits of sha1(`<name>\0<url>`), so
+  credentials are keyed by name and URL, and `?tools=all` is part of the key.
+- **Tool executors.** `ctx.tool.list()` returns each MCP tool with a callable `execute`, which checks `<server>_<tool>`
+  with the agent's and the session's rules and saved approvals. A deny is a `Tool.Error` with a cause; the server's
+  `isError` is one without. `execute.before` and `execute.after` hooks do not run for it.
+- **Code Mode.** MCP tools are in Code Mode by default (`tools.jira.<tool>`). A change called inside a program asks just
+  as a direct call does; a declined ask ends that `execute` call.
+- **Credential status.** A status set with `integration.connection.status` is not on what `connection.active` returns;
+  `integration.get` projects it as `connections[].status`.
+- **RPC input** given as a Standard Schema is validated with it; a plain JSON Schema is decoded with Effect, which drops
+  unknown keys of an object that has properties. The tools RPC's envelope carries a strict Standard Schema validator as
+  a non-enumerable `~standard` property for that reason.

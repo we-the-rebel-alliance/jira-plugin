@@ -56,7 +56,7 @@ OpenCode project.
 - **One line restricts it.** Set `"access": "ask-changes"` in the plugin options and every change asks first, or
   `"access": "read-only"` and every change is denied. A rule in an agent's own `permissions` restricts one agent, and a
   `deny` in the top-level `permissions` restricts every agent. The README's
-  [Permissions](https://github.com/joe-broadhead/opencode-jira/blob/HEAD/README.md#permissions) has the three blocks.
+  [Permissions](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/README.md#permissions) has the three blocks.
 - Six of the seven destructive tools are also not granted by the plugin's pinned request, so Atlassian never loads
   them: the three permanent deletes, the three project and screen settings, and the opaque entity-property writer. No
   admin can add that scope to this client: a new release of the plugin would have to request it and an admin would have
@@ -110,7 +110,7 @@ Things to know:
 ## Scripts
 
 The tools RPC (`jira.issues.tools`, see
-[docs/scripting.md](https://github.com/joe-broadhead/opencode-jira/blob/HEAD/docs/scripting.md)) exposes every known Jira
+[docs/scripting.md](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/scripting.md)) exposes every known Jira
 tool as a method for a script, with no model, each with a class: read, write or destructive. It adds no authority:
 
 - A script names a session that names an agent, and runs as them. The rules that decide are the agent's, then the
