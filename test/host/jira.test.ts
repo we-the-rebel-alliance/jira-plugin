@@ -225,31 +225,12 @@ describe(`the plugin on OpenCode ${HOST_VERSION}`, () => {
     expect(plain.methods.every((method) => !Object.hasOwn(method, "permission"))).toBe(true)
   })
 
-  // The list snapshot rides events_list with a second, declared output: the host validates every method answer, so an
-  // events-only schema refused it `rpc.invalid_output` before there was one.
-  // No probe runs first, as after a restart of OpenCode: the listing reads who is signed in through the host's own executor.
-  test("a script reads the assigned-issues list through the tools RPC with no probe first, and the answer is the list's own shape", async () => {
-    await jiraTools(host)
-    const before = host.fake.called.length
-    const sessionID = await session(host)
-    const rpc = toolsRpc(host)
-    const listed = (await rpc.events_list!({ sessionID, input: { source: "jira", list: "issues" } }, { location: host.location })) as Record<string, any>
-    expect(listed).toMatchObject({
-      source: "jira",
-      account: "fake-account-1",
-      data: { items: [{ id: "cloud-acme:EX-1", text: "EX-1: A work item", note: "In Progress" }], editable: false },
-      trust: "untrusted",
-    })
-    expect(listed.events).toBeUndefined()
-    expect(host.fake.called.slice(before).filter((call) => call.tool === "searchJiraIssuesUsingJql")).toHaveLength(2)
-  })
-
   test("the location: describe reports where the call landed, and a call that names another location is answered there", async () => {
     const elsewhere = join(ROOT, "elsewhere")
     mkdirSync(elsewhere, { recursive: true })
     const rpc = (host.client.rpc as unknown as (definition: object) => ToolsClient)(TOOLS_CONTRACT)
-    // From OpenCode 2.2.7 a location opened by a call answers before its plugins have loaded: until the plugin has
-    // registered there, the call is rpc.unavailable. Any other error fails the test at once.
+    // A location opened by a call answers before its plugins have loaded: until the plugin has registered there,
+    // the call is rpc.unavailable. Any other error fails the test at once.
     const loaded = (options: object) =>
       until("the plugin has loaded in the location", () =>
         rpc.describe!({}, options).then(
@@ -313,7 +294,7 @@ describe(`the plugin on OpenCode ${HOST_VERSION}`, () => {
     expect(text).toContain(`- OpenCode: ${HOST_VERSION} (${TESTED_HOSTS.includes(HOST_VERSION) ? "tested" : "untested"}; supported range ${SUPPORTED_HOST})`)
     expect(text).not.toContain("Plan")
     const output = await statusRpc(host)
-    expect(output).toMatchObject({ state: "connected", access: "all", tools: AVAILABLE, deniedTools: [...DESTRUCTIVE_TOOLS], notGranted: ["getJiraScreen", "getJiraWorkflowEditorLink", "getJiraWorkflows"], unknownCount: 1, listing: false, unguardedAgents: [] })
+    expect(output).toMatchObject({ state: "connected", access: "all", tools: AVAILABLE, destructiveTools: [...DESTRUCTIVE_TOOLS], notGranted: ["getJiraScreen", "getJiraWorkflowEditorLink", "getJiraWorkflows"], unknownCount: 1, listing: false, unguardedAgents: [] })
     expect(output).not.toHaveProperty("account")
     expect(output).toMatchObject({ sites: [] })
     // Neither the command nor the RPC, which is what the dialog asks, reached Atlassian.

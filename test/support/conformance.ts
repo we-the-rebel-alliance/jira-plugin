@@ -134,25 +134,6 @@ export async function conformanceReports(fixture: Fixture = FIXTURE): Promise<Co
   await methods({ permission: { assert: async () => {} } }).probe.run({ source: JIRA_SOURCE }, call())
   const reports: ConformanceReport[] = []
   for (const source of sources.items) {
-    if (source.id === "jira.issues") {
-      reports.push(
-        await sourceConformance({
-          plugin: PACKAGE,
-          source,
-          tools: declaredTools(),
-          account,
-          sources: { rpc: sources.rpc, probe: sources.probe },
-          describe: { id: sources.rpc },
-          cases: [],
-          snapshotCases: [{ ...(source.input ?? {}), account }],
-          calls: {
-            snapshot: (input, session) => eventsMethod(sourceOptions(fixture, session, [], known)).run(input, call()),
-            probe: (input, session) => probeMethod(sourceOptions(fixture, session, [], known)).run(input, call()),
-          },
-        }),
-      )
-      continue
-    }
     if (source.id !== "jira.activity") throw new Error(`${source.id} is declared and the conformance run has no calls for it`)
     reports.push(
       await sourceConformance({
