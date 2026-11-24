@@ -56,8 +56,8 @@ OpenCode project.
   `jira_downloadJiraIssueAttachment` returns a short-lived signed URL, which is a bearer credential for the file.
 - **One line restricts it.** Set `"access": "ask-changes"` in the plugin options and every change asks first, or
   `"access": "read-only"` and every change is denied. A rule in an agent's own `permissions` restricts one agent, and a
-  `deny` in the top-level `permissions` restricts every agent. The README's
-  [Permissions](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/README.md#permissions) has the block.
+  `deny` in the top-level `permissions` restricts every agent. `/jira-status` prints the generated block, under
+  `Agents without default rules`, when an agent lacks it.
 - Six of the seven destructive tools are also not granted by the plugin's pinned request, so Atlassian never loads
   them: the three permanent deletes, the three project and screen settings, and the opaque entity-property writer. No
   admin can add that scope to this client: a new release of the plugin would have to request it and an admin would have
@@ -117,7 +117,7 @@ tool as a method for a script, with no model, each with a class: read, write or 
 - A script names a session that names an agent, and runs as them. The rules that decide are the agent's, then the
   session's, resolved before dispatch: only `allow` runs. An `ask` is refused with no prompt and no Atlassian call, and
   a `deny` is refused with no Atlassian call. A saved "Always allow" is not part of those rules and does not authorise a
-  script; a script's grant is a rule in config, or a Jobs run session.
+  script; a script's grant is a rule in config.
 - A script gets the same default. Under `access: "all"` the block allows every method, a write and the export
   included. A session on an agent with `ask-changes` or `read-only` needs an explicit `allow` for the method's action;
   the destructive class then resolves to `ask` or `deny` and is refused until a rule changes it.

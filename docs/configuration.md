@@ -25,8 +25,9 @@ To set options, use the object form:
 
 How much the default rules restrict. `all` allows every Jira tool; `ask-changes` allows a read and asks for every other
 tool; `read-only` allows a read and denies every other tool, which also hides it from the model. The classes come from
-`src/jira-tools.ts`, so the value decides a tool Atlassian adds later too. [Permissions](#permissions) has the
-generated block.
+`src/jira-tools.ts`, so the value decides a tool Atlassian adds later too. `/jira-status` prints the generated
+block, under `Agents without default rules`, when an agent lacks it; [Permissions](#permissions) has the recipes and
+the agents that miss it.
 
 ### `allowUntestedHost`
 

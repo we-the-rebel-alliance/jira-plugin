@@ -127,7 +127,8 @@ notification scheme decides, and the safe assumption is that watchers, the assig
 mentioned get an email.
 
 [docs/configuration.md](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/configuration.md#permissions)
-has the whole block, permission recipes and the agents that miss it.
+has the permission recipes and the agents that miss it; `/jira-status` prints the generated block, under
+`Agents without default rules`, when an agent lacks it.
 
 ## Configure
 

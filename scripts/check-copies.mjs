@@ -13,7 +13,7 @@ const COPIES = [
   // The release kit, whole: one version in every plugin (CONTRIBUTING.md, Releasing). Change it in every plugin at once.
   { path: "scripts/attach-native.mjs", optional: false, sha256: "835b12b5d4e95fe87f61a2656f7be0baf8c805299cadff7110a16a6f2b475f8e", part: (text) => text },
   { path: "scripts/capture-tools.mjs", optional: false, sha256: "bf1276b41979c94519f4d42c580ebf8b077b66cb969fa234063a241d0073fa63", part: (text) => text },
-  { path: "scripts/changelog.mjs", optional: false, sha256: "72980c16bea66ebdb991169796db6e1c29779f1f3d491dc5824a5bacc0efdcd9", part: (text) => text },
+  { path: "scripts/changelog.mjs", optional: false, sha256: "fe09a9a1ad4a1e73660de213f9bb0e1583e79fa05cf0d957e425e20e70abf0ac", part: (text) => text },
   { path: "scripts/check-drift.mjs", optional: false, sha256: "328217e149e6e840facfd6297d8b3d4d2effbbd8ba7f5a1c7dfa6e54f47550a4", part: (text) => text },
   { path: "scripts/check-release-plugin-add.sh", optional: false, sha256: "557fda41255c0b9fd0d3be3e7fc9518fc2cb097cd8fc9766b76fa0b3c3620f89", part: (text) => text },
   { path: "scripts/check-release-shape.mjs", optional: false, sha256: "cca057c01cbbd1c3caead2b769b47fae9037243d3e3e4f322d7dfab02d3b3f46", part: (text) => text },

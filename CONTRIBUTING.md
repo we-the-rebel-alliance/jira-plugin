@@ -46,7 +46,7 @@ npm run check
 | `pack` | `bun test ./test/pack`: builds, packs and installs the package, imports both entry points, and loads it in stock OpenCode 2.4.1 |
 | `forbidden` | `node scripts/check-forbidden.mjs`: scans `src/`, `test/`, `scripts/` and `dist/` for forbidden APIs and machine-local paths |
 | `copies` | `node scripts/check-copies.mjs`: the `jelly` setting rules in `test/support/jelly-settings.ts` and the release kit match the copies every plugin carries; the tools RPC is the source contract's, pinned in `package-lock.json` |
-| `lint:actions` | `actionlint` over the workflows, when it is on PATH; CI runs it as its own job |
+| `lint:actions` | `actionlint` over the workflows, when it is on PATH; CI runs it as a step in the one `ci` job |
 | `icons` | `node scripts/check-icons.mjs`: the SVG is clean and exact, the 128 and 256 PNGs exist, and `exports` and `files` agree |
 | `whitelist` | Checks `package.json` against the approved package shape, and that `dist/` holds exactly `index.js` and `tui.js` |
 
