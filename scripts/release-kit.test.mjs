@@ -1947,7 +1947,7 @@ describe("package.json: private, and in the canonical form", () => {
   })
 })
 
-describe("CI: one `ci` job, on the gated runner", () => {
+describe("CI: macOS on pushes to master and for releases, never on pull requests", () => {
   test("ciMatrix: a pull request's matrix has no macOS entry, and a master push's does", () => {
     assert.deepEqual(ciMatrix(CI_YML), { pullRequest: ["ubuntu-24.04", "ubuntu-24.04-arm"], push: RUNNERS, problems: [] })
     const include = [
@@ -1974,18 +1974,6 @@ describe("CI: one `ci` job, on the gated runner", () => {
     assert.deepEqual(ciJobsProblems(undefined, ["macos-26"]), ["no successful job on macos-26"])
   })
 
-  test("this repository's ci.yml has one job, `ci`, on the family's gated runner (npm run check)", () => {
-    const lines = readFileSync(join(SCRIPTS, "..", ".github", "workflows", "ci.yml"), "utf8").split("\n")
-    const at = lines.indexOf("jobs:")
-    assert.notEqual(at, -1, "ci.yml has a jobs block")
-    const jobs = lines.slice(at + 1).filter((line) => /^ {2}[\w-]+:\s*$/.test(line))
-    assert.deepEqual(jobs, ["  ci:"], "ci.yml has exactly one job, with the id ci")
-    assert.ok(lines.includes("    name: ci"), "the job's name is ci")
-    assert.ok(
-      lines.includes("    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && (vars.CI_RUNNER_PUBLIC || 'ubuntu-24.04') || 'ubuntu-24.04' }}"),
-      "the job runs on the family's gated runner expression",
-    )
-  })
 })
 
 describe("the conformance report of a plugin that declares sources", () => {
