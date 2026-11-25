@@ -52,7 +52,7 @@ committing: a changed page shape or status answer is a behaviour change.
 
 - Conventional commits, small and honest.
 - A pull request says what changed, why, the spec section it follows, and the exact commands and counts it ran.
-- Never commit `dist/`, `node_modules/`, a tarball or a secret.
+- `dist/` is committed and regenerated with `npm run bundle`; never edit it by hand. Never commit `node_modules/`, a tarball or a secret.
 
 ## Releases
 
