@@ -12778,12 +12778,71 @@ var OwnerCache = class {
 };
 
 // src/skills.ts
+import { existsSync, readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Skill } from "@opencode/plugin";
 var SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
-var SKILL_NAMES = ["jira", "jira-write"];
+function skillNames(directory = SKILLS_DIR) {
+  try {
+    return readdirSync(directory, { withFileTypes: true }).filter((entry) => entry.isDirectory() && existsSync(join(directory, entry.name, "SKILL.md"))).map((entry) => entry.name).sort();
+  } catch {
+    return [];
+  }
+}
+function fold(lines) {
+  let value = "";
+  for (const line of lines) {
+    if (line === "") {
+      value += "\n";
+      continue;
+    }
+    value += value === "" || value.endsWith("\n") ? line : ` ${line}`;
+  }
+  return value;
+}
+function frontmatter(text3, where) {
+  const lines = text3.split("\n");
+  const fields = /* @__PURE__ */ new Map();
+  for (let index = 0; index < lines.length; index++) {
+    const match = /^([A-Za-z0-9_-]+):(?:[ \t]*(.*))?$/.exec(lines[index] ?? "");
+    if (match === null) continue;
+    const key = match[1] ?? "";
+    const raw = (match[2] ?? "").trim();
+    const block = /^([>|])([+-]?)$/.exec(raw);
+    if (block === null) {
+      fields.set(key, raw.replace(/^(["'])(.*)\1$/, "$2"));
+      continue;
+    }
+    const collected = [];
+    let next = index + 1;
+    for (; next < lines.length; next++) {
+      const line = lines[next] ?? "";
+      if (line.trim() === "") {
+        collected.push("");
+        continue;
+      }
+      if (!/^[ \t]/.test(line)) break;
+      collected.push(line);
+    }
+    index = next - 1;
+    const indented = collected.filter((line) => line.trim() !== "");
+    const indentation = indented.length === 0 ? 0 : Math.min(...indented.map((line) => /^[ \t]*/.exec(line)?.[0].length ?? 0));
+    const body = collected.map((line) => line.slice(Math.min(indentation, line.length)));
+    let trailing = 0;
+    while (body.length > 0 && body[body.length - 1] === "") {
+      body.pop();
+      trailing++;
+    }
+    let value = block[1] === "|" ? body.join("\n") : fold(body);
+    if (block[2] === "+") value += "\n".repeat(trailing);
+    else if (block[2] !== "-" && body.length > 0) value += "\n";
+    if (value === "") throw new Error(`${where} has no description`);
+    fields.set(key, value);
+  }
+  return fields;
+}
 function notLoaded(name, why) {
   const reason = why.replace(/[.\s]+$/, "");
   return `UNAVAILABLE: The "${name}" skill was not loaded: ${reason}. Next step: Reinstall the plugin.`;
@@ -12792,15 +12851,10 @@ function parseSkill(name, path, text3) {
   const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text3.replace(/\r\n/g, "\n"));
   const where = `skills/${name}/SKILL.md`;
   if (match === null) throw new Error(`${where} has no frontmatter`);
-  const fields = /* @__PURE__ */ new Map();
-  for (const line of (match[1] ?? "").split("\n")) {
-    const at = line.indexOf(":");
-    if (at <= 0) continue;
-    fields.set(line.slice(0, at).trim(), line.slice(at + 1).trim().replace(/^(["'])(.*)\1$/, "$2"));
-  }
+  const fields = frontmatter(match[1] ?? "", where);
   if (fields.get("name") !== name) throw new Error(`${where} must be named "${name}" in its frontmatter`);
   const description = fields.get("description");
-  if (description === void 0 || description === "") throw new Error(`${where} has no description`);
+  if (description === void 0 || description === "" || description === ">" || description === "|") throw new Error(`${where} has no description`);
   const content = (match[2] ?? "").trim();
   if (content === "") throw new Error(`${where} has no body`);
   return {
@@ -12814,7 +12868,9 @@ function parseSkill(name, path, text3) {
 async function loadSkills(directory = SKILLS_DIR) {
   const skills = [];
   const problems = [];
-  for (const name of SKILL_NAMES) {
+  const names = skillNames(directory);
+  if (names.length === 0) problems.push(notLoaded("skills", "skills/ has no SKILL.md"));
+  for (const name of names) {
     const path = join(directory, name, "SKILL.md");
     try {
       skills.push(parseSkill(name, path, await readFile(path, "utf8")));

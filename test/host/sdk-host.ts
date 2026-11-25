@@ -9,7 +9,7 @@ import { ROOT } from "./isolate.ts"
 let hosts = 0
 
 /** The SDK host, active and ready at an empty project directory. */
-export async function startSdkHost(config: Readonly<Record<string, unknown>>) {
+export async function startSdkHost(config: Readonly<Record<string, unknown>>, options?: Readonly<Record<string, unknown>>) {
   const root = fileURLToPath(new URL("../..", import.meta.url))
   const entry = join(root, "dist", "index.js")
   if (!existsSync(entry)) throw new Error("dist/index.js is missing; run npm run bundle before the host tests")
@@ -18,10 +18,17 @@ export async function startSdkHost(config: Readonly<Record<string, unknown>>) {
   const directory = join(ROOT, `config-${count}`)
   mkdirSync(work, { recursive: true })
   mkdirSync(directory, { recursive: true })
-  const plugin = ((await import(pathToFileURL(entry).href)) as { default: unknown }).default
+  const plugin = ((await import(pathToFileURL(entry).href)) as { default: { id: string; setup: (ctx: never) => unknown } }).default
+  const configured =
+    options === undefined
+      ? plugin
+      : {
+          id: plugin.id,
+          setup: (ctx: never) => plugin.setup({ ...(ctx as object), options } as never),
+        }
   const { OpenCode } = (await import("@opencode/sdk")) as typeof import("@opencode/sdk")
   const client = await OpenCode.create({
-    plugins: [plugin as never],
+    plugins: [configured as never],
     app: { version: "2.4.1" },
     config: { content: JSON.stringify(config), directory, project: false, claude: false },
     database: { path: join(ROOT, `opencode-${count}.db`) },

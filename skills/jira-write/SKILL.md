@@ -1,6 +1,8 @@
 ---
 name: jira-write
-description: "Before a Jira change through the account's pass-through tools: create or edit an item, transition, comment, log time, link, attach, watch, move a sprint or manage a version."
+description: >
+  Before a Jira change through the account's pass-through tools: create or edit an item,
+  transition, comment, log time, link, attach, watch, move a sprint or manage a version.
 ---
 # Changes in Jira
 

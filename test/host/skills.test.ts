@@ -2,11 +2,12 @@
 // `ctx.skill.transform`, and only the SDK's own `skill.list` shows what the location actually loaded. The same host
 // answers `command.list`, where the `/jira` status command must appear.
 import "./isolate.ts"
-import { existsSync, mkdirSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { setTimeout as sleep } from "node:timers/promises"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { describe, expect, test } from "vitest"
+import { parse as parseYaml } from "yaml"
 import { ROOT } from "./isolate.ts"
 
 const root = fileURLToPath(new URL("../..", import.meta.url))
@@ -23,7 +24,22 @@ describe("the built plugin on the real 2.4.1 SDK host", () => {
       expect(existsSync(entry), "dist/index.js is missing; run npm run bundle before the host tests").toBe(true)
       const plugin = ((await import(pathToFileURL(entry).href)) as { default: unknown }).default
       const { OpenCode } = (await import("@opencode/sdk")) as typeof import("@opencode/sdk")
-      const { SKILL_NAMES } = await import("../../src/skills.ts")
+      const skillsRoot = join(root, "skills")
+      const expected = readdirSync(skillsRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && existsSync(join(skillsRoot, entry.name, "SKILL.md")))
+        .map((entry) => entry.name)
+        .sort()
+        .map((name) => {
+          const text = readFileSync(join(skillsRoot, name, "SKILL.md"), "utf8").replace(/\r\n/g, "\n")
+          const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? ""
+          const description = (parseYaml(front) as { description?: unknown }).description
+          expect(typeof description, `${name}'s description is not a string`).toBe("string")
+          expect(description, `${name}'s description is empty`).not.toBe("")
+          expect(description, `${name}'s description is the literal ">"`).not.toBe(">")
+          expect(description, `${name}'s description is the literal "|"`).not.toBe("|")
+          return { id: name, description: description as string }
+        })
+      expect(expected.length, "no skills/*/SKILL.md found").toBeGreaterThan(0)
       const config = join(ROOT, "config")
       mkdirSync(config, { recursive: true })
       const client = await OpenCode.create({
@@ -48,10 +64,15 @@ describe("the built plugin on the real 2.4.1 SDK host", () => {
         expect(state).toBe("active")
 
         const { data: skills } = await client.skill.list({ location })
-        const listed = new Set<string>(skills.map((skill: { id: unknown }) => String(skill.id)))
-        const wanted = [...SKILL_NAMES].sort()
-        for (const name of wanted) expect(listed.has(name), `the host lists no ${name} skill`).toBe(true)
-        expect([...listed].filter((id) => wanted.includes(id)).sort()).toEqual(wanted)
+        const listed = new Map<string, { description?: string }>(
+          skills.map((skill: { id: unknown; description?: string }) => [String(skill.id), skill]),
+        )
+        for (const skill of expected) {
+          const registered = listed.get(skill.id)
+          expect(registered, `the host lists no ${skill.id} skill`).toBeDefined()
+          expect(registered?.description, `${skill.id}'s registered description`).toBe(skill.description)
+        }
+        expect([...listed.keys()].filter((id) => expected.some((skill) => skill.id === id)).sort()).toEqual(expected.map((skill) => skill.id))
 
         const { data: commands } = await client.command.list({ location })
         expect(commands.map((command: { name: string }) => command.name)).toContain("jira")
