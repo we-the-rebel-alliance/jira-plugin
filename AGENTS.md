@@ -29,7 +29,7 @@ only and reaches no other Atlassian product.
 | `npm run check` | lint, typecheck, build, docs drift, unit, conformance, host, `plugin-kit check`, pack |
 | `npx plugin-kit check` | conformance (T0 and T1), the doc file set, forbidden patterns and no bundled kit; it does not run lint, typecheck, build or the unit tests, which are `npm run check`'s job |
 | `npx plugin-kit docs` | regenerates the generated doc sections from the manifest |
-| `RECORD=1 npx vitest run test/conformance` | rewrites `fixtures/conformance.json` from the handlers; every other run only compares |
+| `RECORD=1 npm test` | rewrites `fixtures/conformance.json` from the handlers; every other run only compares. `npx plugin-kit record` cannot call the handlers: it validates and redacts the committed fixture instead |
 | `npm run test:pack` | packs, installs and loads the tarball |
 
 Full checks bind a host; on a shared machine run the host-binding commands one repository at a time.
@@ -96,7 +96,7 @@ scripts/build.mjs       the one build script
 2. **A method of the plugin's own:** declare it with its class, `accounts` and `operations`, write the handler in
    `src/handlers/`, keep the provider call in `src/provider/`, and add unit tests.
 3. Record the fixture again if the change touches the handler's answers:
-   `RECORD=1 npx vitest run test/conformance`.
+   `RECORD=1 npm test`.
 4. Run `npx plugin-kit docs`, then `npm run check`.
 5. Describe it in `docs/capabilities.md` and, if agents should use it, in the skill.
 

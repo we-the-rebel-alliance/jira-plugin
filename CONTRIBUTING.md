@@ -42,7 +42,7 @@ change run `npx plugin-kit docs` and commit the generated sections; do not edit 
 Atlassian boundary for two synthetic aliases. It contains no real account and no secret. To rewrite it:
 
 ```sh
-RECORD=1 npx vitest run test/conformance
+RECORD=1 npm test
 ```
 
 Every other run compares the file and fails on a difference; nothing rewrites it by accident. Review the diff before
