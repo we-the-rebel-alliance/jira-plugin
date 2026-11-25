@@ -103,8 +103,8 @@ export async function registerJiraAccounts(
   const result = await registerAccounts(ctx, {
     manifest: request.manifest,
     options: request.options,
-    server: (account: AccountProfile, _name: string) => {
-      const entry = request.servers.get(account.alias)
+    server: (_account: AccountProfile, name: string) => {
+      const entry = request.servers.get(name)
       if (entry?.kind === "conflict") throw new Error(`${CONFLICT} ${entry.url ?? "an unknown address"}`)
       if (entry?.kind === "adopted") throw new Error(`${ADOPTED} ${entry.url ?? "the same address"}`)
       return serverConfig()
@@ -114,16 +114,6 @@ export async function registerJiraAccounts(
     accounts: result.accounts,
     problems: result.problems.filter((problem) => !problem.includes(ADOPTED) && !problem.includes(CONFLICT)),
   }
-}
-
-/** Each alias's server entry, keyed by alias, from the map keyed by server name. */
-export function entriesByAlias(names: ReadonlyMap<string, string>, found: ReadonlyMap<string, ServerEntry>): Map<string, ServerEntry> {
-  const entries = new Map<string, ServerEntry>()
-  for (const [alias, name] of names) {
-    const entry = found.get(name)
-    if (entry !== undefined) entries.set(alias, entry)
-  }
-  return entries
 }
 
 /** The signal one alias's server state gives status, and the watcher: no server yet is a sign-in still to do. */
@@ -148,7 +138,7 @@ export async function accountSignals(
   const signals: Record<string, AccountSignal> = {}
   for (const alias of aliases) {
     const name = names.get(alias) ?? alias
-    const entry = servers.get(alias)
+    const entry = servers.get(name)
     const state = entry?.kind === "conflict" ? { state: "error" as const, reason: `mcp.servers.${name} is set to another address (${entry.url ?? "an unknown address"})` } : signalOf(list?.data.find((server: ServerInfo) => server.name === name)?.status)
     const owner = owners.get(alias)
     signals[alias] = { ...state, ...(owner === undefined ? {} : { owner }) }

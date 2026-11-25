@@ -96,7 +96,7 @@ export interface ServerEntry {
 export interface ProviderOptions {
   /** The declared aliases, in the options' order. */
   readonly aliases: readonly string[]
-  /** Each declared alias's server entry, as the setup found it. */
+  /** Each alias server's entry, keyed by the server name, as the setup found it. */
   readonly servers: ReadonlyMap<string, ServerEntry>
 }
 
@@ -153,7 +153,7 @@ export function createProvider(ctx: Pick<Plugin.Context, "tool" | "mcp">, option
   /** Why a tool of this alias cannot be called now, as the contract's code and a next step. */
   const cannotCall = async (alias: string, tool: string): Promise<ProviderError> => {
     const name = serverName(alias, options.aliases)
-    const entry = options.servers.get(alias)
+    const entry = options.servers.get(name)
     if (entry?.kind === "conflict") {
       return new ProviderError(
         "UNAVAILABLE",
@@ -183,7 +183,7 @@ export function createProvider(ctx: Pick<Plugin.Context, "tool" | "mcp">, option
     async call(alias, tool, input, context) {
       context.signal.throwIfAborted()
       const name = serverName(alias, options.aliases)
-      if (options.servers.get(alias)?.kind === "conflict") throw await cannotCall(alias, tool)
+      if (options.servers.get(name)?.kind === "conflict") throw await cannotCall(alias, tool)
       const id = toolAction(name, tool)
       const executor = (await ctx.tool.list()).find((entry) => entry.id === id)
       if (executor === undefined) throw await cannotCall(alias, tool)

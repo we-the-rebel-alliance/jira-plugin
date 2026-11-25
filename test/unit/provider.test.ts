@@ -5,8 +5,8 @@ import { FakeJira } from "../support/fake-jira.ts"
 
 const servers = (entry?: ServerEntry) =>
   new Map<string, ServerEntry>([
-    ["work", entry ?? { kind: "plugin" }],
-    ["personal", { kind: "plugin" }],
+    ["jira-work", entry ?? { kind: "plugin" }],
+    ["jira-personal", { kind: "plugin" }],
   ])
 
 function provider(tools: { id: string; execute: (input: unknown, context: never) => Promise<unknown> }[], mcp: FakeJira, entry?: ServerEntry) {

@@ -1,6 +1,6 @@
 import { Plugin } from "@opencode/plugin"
 import { assertHost, register } from "@we-the-rebel-alliance/plugin-contract/register"
-import { accountPlan, classifyServers, entriesByAlias, registerJiraAccounts, serverNames } from "./accounts.ts"
+import { accountPlan, classifyServers, registerJiraAccounts, serverNames } from "./accounts.ts"
 import { agentsFromHost, registerJiraCommand } from "./command.ts"
 import { createHandlers, type HandlerDeps } from "./handlers/index.ts"
 import { manifest, version } from "./manifest.ts"
@@ -19,7 +19,7 @@ export interface JiraSeam {
 function conflictProblems(names: ReadonlyMap<string, string>, servers: ReadonlyMap<string, ServerEntry>): string[] {
   const problems: string[] = []
   for (const [alias, name] of names) {
-    const entry = servers.get(alias)
+    const entry = servers.get(name)
     if (entry?.kind === "conflict") problems.push(`mcp.servers.${name} is set to another address (${entry.url ?? "an unknown address"}), so the ${alias} account is unavailable`)
   }
   return problems
@@ -45,7 +45,7 @@ export function createJiraPlugin(seam: JiraSeam = {}) {
       // What each alias's server entry already is, before this plugin adds one.
       const found = new Map<string, ServerEntry>()
       await classifyServers(ctx, names, found)
-      const servers = entriesByAlias(names, found)
+      const servers = found
       const accounts = await registerJiraAccounts(ctx, { manifest, options, servers })
       const problems = [...accounts.problems, ...conflictProblems(names, servers)]
 

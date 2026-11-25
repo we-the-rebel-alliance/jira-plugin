@@ -48,8 +48,8 @@ describe("what an alias's server entry is", () => {
 describe("registering one server per alias", () => {
   test("a new alias gets the pinned endpoint and scope, and a conflict adds nothing", async () => {
     const servers = new Map<string, ServerEntry>([
-      ["work", { kind: "plugin" }],
-      ["personal", { kind: "conflict", url: "https://elsewhere.example.com/…" }],
+      ["jira-work", { kind: "plugin" }],
+      ["jira-personal", { kind: "conflict", url: "https://elsewhere.example.com/…" }],
     ])
     const { ctx, sets } = mcpContext()
     const result = await registerJiraAccounts(ctx, { manifest, options: { access: "all", accounts: { work: {}, personal: {} } }, servers })
@@ -64,7 +64,7 @@ describe("registering one server per alias", () => {
   })
 
   test("an adopted entry is left as the person wrote it: nothing is set", async () => {
-    const servers = new Map<string, ServerEntry>([["work", { kind: "adopted", url: "https://mcp.atlassian.com/v2/mcp?tools=all" }]])
+    const servers = new Map<string, ServerEntry>([["jira-work", { kind: "adopted", url: "https://mcp.atlassian.com/v2/mcp?tools=all" }]])
     const { ctx, sets } = mcpContext()
     const result = await registerJiraAccounts(ctx, { manifest, options: { access: "all", accounts: { work: {} } }, servers })
     expect(sets).toEqual([])
@@ -72,7 +72,7 @@ describe("registering one server per alias", () => {
   })
 
   test("a conflict's address is not reported as a problem, so it never reaches status", async () => {
-    const servers = new Map<string, ServerEntry>([["work", { kind: "conflict", url: "https://elsewhere.example.com/…" }]])
+    const servers = new Map<string, ServerEntry>([["jira-work", { kind: "conflict", url: "https://elsewhere.example.com/…" }]])
     const { ctx } = mcpContext()
     const result = await registerJiraAccounts(ctx, { manifest, options: { access: "all", accounts: { work: {} } }, servers })
     expect(result.problems).toEqual([])

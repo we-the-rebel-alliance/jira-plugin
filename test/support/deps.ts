@@ -25,7 +25,7 @@ export function handlerDeps(fake: FakeJira = new FakeJira(), options: Readonly<R
   const profiles = plan.value.accounts
   const aliases = profiles.map((profile) => profile.alias)
   const names = serverNames(aliases)
-  const servers = new Map<string, ServerEntry>(aliases.map((alias) => [alias, { kind: "plugin" }]))
+  const servers = new Map<string, ServerEntry>(aliases.map((alias) => [names.get(alias) ?? alias, { kind: "plugin" }]))
   const owners = new OwnerCache()
   const deps: HandlerDeps = {
     manifest,
