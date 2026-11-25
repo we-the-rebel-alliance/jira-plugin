@@ -1,22 +1,16 @@
 # Changelog
 
-All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.0] - 2026-11-25
 
-## 0.0.0 (unreleased)
+The plugin is ready for `v0.0.0`: the greenfield rebuild onto plugin-contract v0.
 
-The first release of `@we-the-rebel-alliance/jira-plugin`, rebuilt greenfield on OpenCode 2.4.1.
-
-### Changed
-
-- The package is `@we-the-rebel-alliance/jira-plugin`, version `0.0.0`, with every repository URL, install line and
-  doc link pointing at `we-the-rebel-alliance/jira-plugin`.
-- OpenCode 2.4.1 exactly: the `@opencode/*` devDependencies pin `2.4.1` (with `effect` `4.1.0`), the host range is
-  `>=2.4.1 <2.5.0`, and `2.4.1` is the one tested release.
-- The `jira` namespace line is one line of 304 characters, and the two skill descriptions are 234 and 206.
-
-### Removed
-
-- The `jira.issues` list snapshot and its read path: the tools RPC `events_list` method has no `list` input, and
-  `jira.activity` is the plugin's one source.
-- `docs/jelly.md`, the `jelly` declaration's prose, and the status field `deniedTools` (use `destructiveTools`).
-- The stock-host matrices and code paths for OpenCode before 2.4.1.
+- Two or more Jira accounts at once, one vendor MCP server per alias (`jira`, `jira-<alias>`), each with its own
+  sign-in; an optional `site` cloud id narrows `events_list`.
+- `events_list` lists the work items that changed for the signed-in person, oldest first, with a cursor bound to the
+  plugin, the source and the alias.
+- `probe` names the signed-in owner; `status` reports the plugin, the host range, every alias and the next step.
+- Atlassian's 55 Jira MCP tools are declared in `methods` with their contract classes and passed through unchanged.
+- Generated access rules from the contract's `access` module; the `account` bus event on a server state change.
+- The pinned six-scope sign-in; adoption of a person's own server entry at the same address, and a clean refusal of any
+  other.
+- Docs, skills and `AGENTS.md` written fresh; conformance recorded for two synthetic aliases; host and pack tests.
