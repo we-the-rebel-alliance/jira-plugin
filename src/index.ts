@@ -7,7 +7,7 @@ import { createHandlers, type HandlerDeps } from "./handlers/index.ts"
 import { manifest, version } from "./manifest.ts"
 import { OwnerCache } from "./owners.ts"
 import { createProvider, type ServerEntry } from "./provider/atlassian.ts"
-import { loadSkills } from "./skills.ts"
+import { registerSkills } from "./skills.ts"
 import { buildStatus } from "./status.ts"
 import { watchAccountStatus } from "./watch.ts"
 
@@ -42,8 +42,7 @@ export default Plugin.define({
     await classifyServers(ctx, names, found)
     const servers = found
     const accounts = await registerJiraAccounts(ctx, { manifest, options, servers })
-    const { skills, problems: skillProblems } = await loadSkills()
-    const accountProblems = [...accounts.problems, ...skillProblems]
+    const accountProblems = [...accounts.problems]
 
     const deps: HandlerDeps = {
       manifest,
@@ -62,9 +61,7 @@ export default Plugin.define({
     }
     const handlers = createHandlers(deps)
     const registration = await register(ctx, manifest, handlers)
-    const skillsRegistration = await ctx.skill.transform((editor) => {
-      for (const info of skills) editor.add(info)
-    })
+    const skillsRegistration = await registerSkills(ctx)
 
     const watcher = watchAccountStatus(ctx, (event, data) => registration.bus.emit(event, data), { aliases, names })
     // The command view is not a handler: it derives the same rules from the public access functions.
