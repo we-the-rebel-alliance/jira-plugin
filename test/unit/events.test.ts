@@ -150,6 +150,34 @@ describe("the Jira activity page", () => {
     expect(page.events.map((event) => event.title)).toEqual(["OPS-49: Same second", "OPS-50: Same second"])
   })
 
+  test("two items updated in the same second split across a one-item page boundary with no skip or duplicate", async () => {
+    const fake = new FakeJira()
+    const base = {
+      summary: "Same second",
+      updated: "2026-11-25T11:00:00.000+0000",
+      status: "To Do",
+      category: "To Do",
+      type: "Task",
+      priority: "Low",
+      assignee: { accountId: "acc-work-ana", displayName: "Ana Silva" },
+      reporter: { accountId: "acc-work-ana", displayName: "Ana Silva" },
+    }
+    fake.set("work", {
+      person: { accountId: "acc-work-ana", displayName: "Ana Silva" },
+      sites: [{ cloudId: "cloud-work-1", url: "https://acme-work.atlassian.net", issues: [{ ...base, id: "2000", key: "OPS-50" }, { ...base, id: "1999", key: "OPS-49" }] }],
+    })
+    const { handlers } = handlerDeps(fake)
+    const first = await call(handlers, { source: "jira", limit: 1 })
+    expect(first.events.map((event) => event.title)).toEqual(["OPS-49: Same second"])
+    expect(first.more).toBe(true)
+    const second = await call(handlers, { source: "jira", limit: 1, cursor: first.cursor })
+    expect(second.events.map((event) => event.title)).toEqual(["OPS-50: Same second"])
+    expect(second.events[0]?.external_id).not.toBe(first.events[0]?.external_id)
+    const third = await call(handlers, { source: "jira", limit: 1, cursor: second.cursor })
+    expect(third.events).toEqual([])
+    expect(third.more).toBe(false)
+  })
+
   test("the request is built from the fixed clock, not the wall clock", async () => {
     const { handlers, fake } = handlerDeps()
     await call(handlers, { source: "jira" })
