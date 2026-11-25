@@ -1,10 +1,11 @@
 // Pack and prove the published shape.
 //
-// `opencode plugin add` on this machine (OpenCode 2.4.1) refuses a local path: "Plugin target must be an npm registry
-// package or Git package specifier", and answers the same for `file:` and an `npm:` prefix. So the last test installs
-// the tarball with `npm install --offline` into a project with an isolated HOME, links the repository's
-// `@opencode/plugin` beside it, and loads the installed package through the kit's real host resolver: exactly the
-// packed entry, from the packed directory, on the real 2.4.1 host.
+// Deviation from standard §8: `opencode plugin add` on this machine (OpenCode 2.4.1) refuses a local path — "Plugin
+// target must be an npm registry package or Git package specifier" — and answers the same for `file:` and an `npm:`
+// prefix. So the last test installs the tarball with `npm install --offline` into a project with an isolated HOME,
+// links the repository's `@opencode/plugin` beside it, and loads the installed package through the kit's real host
+// resolver: exactly the packed entry, from the packed directory, on the real 2.4.1 host. The release-ready proof in the
+// PR uses the CLI itself, `opencode plugin add github:...#<pushed sha>`.
 import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs"
 import { join } from "node:path"

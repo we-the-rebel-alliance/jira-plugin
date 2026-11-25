@@ -136,8 +136,8 @@ function issueJson(issue: FakeIssue) {
       status: { name: issue.status, statusCategory: { name: issue.category } },
       issuetype: { name: issue.type },
       priority: { name: issue.priority },
-      assignee: { accountId: issue.assignee.accountId, displayName: issue.assignee.displayName },
-      reporter: { accountId: issue.reporter.accountId, displayName: issue.reporter.displayName },
+      assignee: { accountId: issue.assignee.accountId },
+      reporter: { accountId: issue.reporter.accountId },
     },
   }
 }

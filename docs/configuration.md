@@ -49,3 +49,33 @@ The pass-through MCP tools follow the same table, per alias: a rule for `work` n
 
 A person's own agent rules come after the generated block and still win for one method; status names the agents whose
 later rules widen a generated `ask` or `deny`.
+
+### Recipes
+
+A method's action is `jira.<method>` for the plugin's own methods, and `<server>_<tool>` for a pass-through MCP tool: the
+`default` account's server is `jira`, so `getJiraIssue` is `jira_getJiraIssue`. A rule after the generated block wins
+for one method; put it in the agent that needs it, not at the top level.
+
+One agent may read but not close a sprint or create work items:
+
+```json
+{
+  "agents": {
+    "build": {
+      "permissions": [
+        { "action": "jira_manageJiraSprint", "resource": "*", "effect": "deny" },
+        { "action": "jira_createJiraIssue", "resource": "*", "effect": "deny" }
+      ]
+    }
+  }
+}
+```
+
+A top-level rule turns one tool off for every agent:
+
+```json
+{ "action": "jira_deleteJiraIssue", "resource": "*", "effect": "deny" }
+```
+
+`deny` also hides the tool from the model. A rule cannot see which operation a multi-operation tool makes
+(`manageJiraSprint`, `manageJiraProjectVersion`), so the skill names the operation before the call.

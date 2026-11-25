@@ -43,8 +43,16 @@ export function watchAccountStatus(ctx: Pick<Plugin.Context, "event" | "mcp">, e
           if (event.type !== "mcp.status.changed") continue
           const alias = byServer.get(event.data.server)
           if (alias === undefined) continue
-          const list = await ctx.mcp.list().catch(() => undefined)
-          const state = signalOf(list?.data.find((server) => server.name === event.data.server)?.status).state
+          let list: Awaited<ReturnType<typeof ctx.mcp.list>>
+          try {
+            list = await ctx.mcp.list()
+          } catch {
+            // A list that cannot be read says nothing about the account: no nudge, and never a false sign-out.
+            continue
+          }
+          const entry = list.data.find((server) => server.name === event.data.server)
+          if (entry === undefined) continue
+          const state = signalOf(entry.status).state
           if (last.get(alias) === state) continue
           last.set(alias, state)
           await emit("account", { account: alias, state }).catch(() => undefined)

@@ -4,7 +4,7 @@
 
 | Layer | Does |
 |---|---|
-| `src/index.ts` | exports the plugin definition; `src/plugin.ts` is the wiring |
+| `src/index.ts` | the one `Plugin.define` and `setup`: host gate, accounts, provider, handlers and skills, then one `register` call |
 | `src/handlers/` | one handler per declared method: `status`, `probe`, `events_list` |
 | `src/provider/` | the provider client (`atlassian.ts`) and Jira's activity walk (`activity.ts`) |
 | `src/accounts.ts` | the mcp servers, the `site` profile and status signals |

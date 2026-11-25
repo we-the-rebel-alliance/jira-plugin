@@ -6,7 +6,7 @@
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { Skill, type Plugin } from "@opencode/plugin"
+import { Skill } from "@opencode/plugin"
 import { safeReason } from "./redact.ts"
 
 /** `skills/` at the package root: beside `dist/` in the installed package and beside `src/` in the repository. */
@@ -61,11 +61,4 @@ export async function loadSkills(directory = SKILLS_DIR): Promise<{ skills: Skil
     }
   }
   return { skills, problems }
-}
-
-/** Adds the loaded skills to the host; the one place a plugin registers skills. */
-export function registerSkills(skill: Pick<Plugin.Context["skill"], "transform">, skills: readonly Skill.Info[]) {
-  return skill.transform((editor) => {
-    for (const info of skills) editor.add(info)
-  })
 }

@@ -1,5 +1,5 @@
 {
-  "$comment": "Recorded from the plugin's own handlers over a fake Atlassian MCP boundary: two mcp accounts (work and personal), one events source, probes for both, and the status answer. Every person, site, issue and key is invented; the fixture is redaction-free by construction.",
+  "$comment": "Recorded from the plugin's own handlers over a fake Atlassian MCP boundary: two mcp accounts (work and personal), one events source, probes for both, and the status answer. Case labels use `case`, and actors carry role and id only, so `plugin-kit record --check` reads no personal field. Every person, site, issue and key is invented.",
   "plugin": "@we-the-rebel-alliance/jira-plugin",
   "accounts": {
     "real": true,
@@ -29,7 +29,7 @@
     "jira.activity": {
       "cases": [
         {
-          "name": "the work account's configured site",
+          "case": "the work account's configured site",
           "input": {
             "source": "jira"
           },
@@ -52,13 +52,11 @@
                 "actors": [
                   {
                     "role": "assignee",
-                    "id": "atlassian:acc-work-ana",
-                    "name": "Ana Silva"
+                    "id": "atlassian:acc-work-ana"
                   },
                   {
                     "role": "reporter",
-                    "id": "atlassian:acc-work-kai",
-                    "name": "Kai Mensah"
+                    "id": "atlassian:acc-work-kai"
                   }
                 ],
                 "title": "OPS-42: Queue migration notes",
@@ -68,7 +66,7 @@
                   "type:task",
                   "status:in-progress"
                 ],
-                "hash": "sha256:613221e2531ad95f0505de1249b794e836d793ee15fb18c33b51401fd0b447bb"
+                "hash": "sha256:49fe5489fc351611e95c2130f135ee284f8b207a01639442cce7aedc2068a834"
               },
               {
                 "source": "jira",
@@ -80,13 +78,11 @@
                 "actors": [
                   {
                     "role": "assignee",
-                    "id": "atlassian:acc-work-kai",
-                    "name": "Kai Mensah"
+                    "id": "atlassian:acc-work-kai"
                   },
                   {
                     "role": "reporter",
-                    "id": "atlassian:acc-work-ana",
-                    "name": "Ana Silva"
+                    "id": "atlassian:acc-work-ana"
                   }
                 ],
                 "title": "OPS-43: Rehearsal passed",
@@ -96,7 +92,7 @@
                   "type:story",
                   "status:done"
                 ],
-                "hash": "sha256:bdfe6464236b1f66d9b9832c6476cd503b2063ac1701d53ff5df8525b642b284"
+                "hash": "sha256:4a4574cb179913ac89138121332deabbe870833848c49a1b0c440be394ea7acf"
               }
             ],
             "cursor": "eyJ2IjoyLCJzIjoiamlyYSIsImIiOiIzN2E0ZjkzM2M3OWM2NDk2IiwiZiI6MTc5NTUyMTYwMDAwMCwicCI6eyJjbG91ZC13b3JrLTEiOlsxNzk1NjAyNjAwMDAwLCIxMDQzIl19fQ",
@@ -107,7 +103,7 @@
           }
         },
         {
-          "name": "a since after every update",
+          "case": "a since after every update",
           "input": {
             "source": "jira",
             "since": "2026-11-25T11:30:00.000Z"
@@ -129,7 +125,7 @@
           }
         },
         {
-          "name": "the personal account's own site",
+          "case": "the personal account's own site",
           "input": {
             "source": "jira"
           },
@@ -152,13 +148,11 @@
                 "actors": [
                   {
                     "role": "assignee",
-                    "id": "atlassian:acc-personal-ana",
-                    "name": "Ana Silva"
+                    "id": "atlassian:acc-personal-ana"
                   },
                   {
                     "role": "reporter",
-                    "id": "atlassian:acc-personal-rowan",
-                    "name": "Rowan Vale"
+                    "id": "atlassian:acc-personal-rowan"
                   }
                 ],
                 "title": "HOME-7: Weekend",
@@ -168,7 +162,7 @@
                   "type:task",
                   "status:to-do"
                 ],
-                "hash": "sha256:6b831c5a46307dab2223c606f37046a95d24699d8113753dced0931b13d74fb2"
+                "hash": "sha256:41a31f4684ce82d3e0a253aa093599c59da4ed8c48cbd9b5e9cecf85b27b28db"
               }
             ],
             "cursor": "eyJ2IjoyLCJzIjoiamlyYSIsImIiOiIzNjkwMzI3NDI4ZDI4MTM2IiwiZiI6MTc5NTUyMTYwMDAwMCwicCI6eyJjbG91ZC1wZXJzb25hbC0xIjpbMTc5NTU0MzIwMDAwMCwiNzAwNyJdfX0",

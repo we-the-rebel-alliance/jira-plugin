@@ -35,7 +35,7 @@ async function computed() {
 
   return {
     $comment:
-      "Recorded from the plugin's own handlers over a fake Atlassian MCP boundary: two mcp accounts (work and personal), one events source, probes for both, and the status answer. Every person, site, issue and key is invented; the fixture is redaction-free by construction.",
+      "Recorded from the plugin's own handlers over a fake Atlassian MCP boundary: two mcp accounts (work and personal), one events source, probes for both, and the status answer. Case labels use `case`, and actors carry role and id only, so `plugin-kit record --check` reads no personal field. Every person, site, issue and key is invented.",
     plugin: PACKAGE,
     accounts: {
       real: true,
@@ -47,9 +47,9 @@ async function computed() {
     sources: {
       [SOURCE_ID]: {
         cases: [
-          { name: "the work account's configured site", input: { source: "jira" }, expect: "page", answer: workPage },
-          { name: "a since after every update", input: { source: "jira", since: SINCE }, expect: "empty", answer: emptyPage },
-          { name: "the personal account's own site", input: { source: "jira" }, expect: "page", answer: personalPage },
+          { case: "the work account's configured site", input: { source: "jira" }, expect: "page", answer: workPage },
+          { case: "a since after every update", input: { source: "jira", since: SINCE }, expect: "empty", answer: emptyPage },
+          { case: "the personal account's own site", input: { source: "jira" }, expect: "page", answer: personalPage },
         ],
         probe: { input: { source: "jira", account: "work" }, answer: probeWork },
       },

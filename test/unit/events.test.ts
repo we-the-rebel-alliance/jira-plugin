@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest"
 import { RegisterError } from "@we-the-rebel-alliance/plugin-contract/register"
 import type { EventsListResult } from "@we-the-rebel-alliance/plugin-contract/events"
 import { FakeJira, NOW, type FakeSite } from "../support/fake-jira.ts"
+import { createHandlers } from "../../src/handlers/index.ts"
+import { ProviderError } from "../../src/provider/atlassian.ts"
 import { handlerDeps, methodCall, TEST_OPTIONS } from "../support/deps.ts"
 
 const events = (answer: unknown) => answer as EventsListResult & { events: { external_id: string; title: string; labels: string[]; url: string | null }[] }
@@ -42,6 +44,27 @@ describe("the Jira activity page", () => {
       "cloud-work-2/1044@2026-11-25T10:00:00.000Z",
       "cloud-work-1/1043@2026-11-25T10:30:00.000Z",
     ])
+  })
+
+  test("one site's failure becomes a failed entry while the other sites still list", async () => {
+    const { deps } = handlerDeps(new FakeJira(), { access: "all", accounts: { work: {}, personal: {} } })
+    const base = deps.provider
+    const handlers = createHandlers({
+      ...deps,
+      provider: {
+        ...base,
+        call: async (alias, tool, input, context) => {
+          if (tool === "searchJiraIssuesUsingJql" && input.cloudId === "cloud-work-2") {
+            throw new ProviderError("UNAVAILABLE", "the site did not answer", "Try again later.")
+          }
+          return base.call(alias, tool, input, context)
+        },
+      },
+    })
+    const page = await call(handlers, { source: "jira" })
+    expect(page.events.map((event) => event.title)).toEqual(["OPS-42: Queue migration notes", "OPS-43: Rehearsal passed"])
+    expect(page.failed).toEqual([{ external_id: "cloud-work-2", code: "UNAVAILABLE" }])
+    expect(page.more).toBe(true)
   })
 
   test("the personal account reads its own site and owner", async () => {

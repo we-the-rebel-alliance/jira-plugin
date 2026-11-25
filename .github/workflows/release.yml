@@ -6,17 +6,19 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: release
+  build:
+    name: build
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,16 +35,43 @@ jobs:
       - run: npm run check
       - name: Conformance report
         run: npx plugin-kit conformance --json > conformance-report.json
-      - name: Checksums
-        run: sha256sum dist/index.js conformance-report.json > SHA256SUMS
+      - name: Collect the release files
+        run: |
+          set -euo pipefail
+          mkdir -p release/dist
+          cp dist/index.js release/dist/index.js
+          cp conformance-report.json release/conformance-report.json
+          sha256sum release/dist/index.js release/conformance-report.json > release/SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files
+          path: release
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: release
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" \
-            dist/index.js \
-            conformance-report.json \
-            SHA256SUMS \
-            --title "Jira ${GITHUB_REF_NAME}" \
+          gh release create "$TAG" \
+            release/dist/index.js \
+            release/conformance-report.json \
+            release/SHA256SUMS \
+            --repo "$REPO" \
+            --verify-tag \
+            --title "$TAG" \
             --generate-notes

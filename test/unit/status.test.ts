@@ -138,6 +138,29 @@ describe("the account watcher", () => {
     ])
   })
 
+  test("a failed MCP server list does not emit a false sign-out", async () => {
+    let attempts = 0
+    const subscribe = ({ signal }: { signal: AbortSignal }) =>
+      (async function* () {
+        yield { type: "mcp.status.changed", data: { server: "jira-work" } }
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
+      })()
+    const ctx = {
+      event: { subscribe },
+      mcp: {
+        list: async () => {
+          attempts++
+          throw new Error("the host would not list MCP servers")
+        },
+      },
+    } as unknown as Pick<Plugin.Context, "event" | "mcp">
+    const emitted: { account: string; state: string }[] = []
+    const watcher = watchAccountStatus(ctx, async (_event, data) => void emitted.push(data), { aliases: ["work"], names: new Map([["work", "jira-work"]]) })
+    await vi.waitFor(() => expect(attempts).toBe(1))
+    await watcher.stop()
+    expect(emitted).toEqual([])
+  })
+
   test("a repeated state is not emitted twice", async () => {
     const fake = new FakeJira()
     const emitted: { account: string; state: string }[] = []

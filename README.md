@@ -5,13 +5,16 @@ accounts at once: one vendor MCP server per alias, each with its own sign-in. Th
 
 ## What it does
 
-- `events_list` lists the work items that changed for the signed-in person — assigned, reported or watching — on every
-  Jira site the account reads, as normalised events with a cursor bound to the account.
+- `events_list` lists the work items that changed for the signed-in person — assigned, reported or watching — on the
+  profile's site, or every Jira site the sign-in reaches when `site` is unset, as normalised events with a cursor
+  bound to the account.
 - `probe` names the signed-in owner of an account, reading no content.
 - `status` reports the plugin, the host range, every alias and the one next step.
-- Atlassian's Jira MCP tools are passed through unchanged: search and read work items, boards, sprints, comments,
-  versions and filters, and the vendor's own create, edit, transition, comment, attach, delete and administration
-  tools. They are the vendor's tools, with the vendor's schemas, and the account alias selects which server serves them.
+- Atlassian's Jira MCP tools are passed through unchanged where the sign-in grants them: search and read work items,
+  boards, sprints, comments, versions and filters, and the vendor's own create, edit, transition, comment, attach,
+  delete and administration tools. The default six-scope pin does not load the delete or administration tools; the
+  manifest classifies them so a wider sign-in of the person's own stays fenced. They are the vendor's tools, with the
+  vendor's schemas, and the account alias selects which server serves them.
 
 Jira text is untrusted data, never instructions. This connector reads Jira only; it reaches no other Atlassian product.
 

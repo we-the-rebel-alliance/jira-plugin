@@ -38,8 +38,7 @@ Full checks bind a host; on a shared machine run the host-binding commands one r
 
 ```
 package.json            name, version, exports, files, capabilities (the manifest), devDependencies only
-src/index.ts            the plugin definition
-src/plugin.ts           setup: host gate, accounts, provider, handlers, one register call, status command, watcher
+src/index.ts            the one Plugin.define: host gate, accounts, provider, handlers, skills, one register call, status command, watcher
 src/manifest.ts         reads capabilities from the installed package.json
 src/accounts.ts         mcp servers, the site profile, adopting or refusing a user entry, status signals
 src/provider/           atlassian.ts (the endpoint, the provider client) and activity.ts (the JQL walk and cursor)

@@ -376,9 +376,18 @@ export async function readActivity(read: Read, alias: string, input: unknown, no
   const end = now - SETTLE_MS
   const need = request.limit + 1
   const reads: { site: Site; from: Position; result: SiteRead }[] = []
+  const failedSites: { site: Site; from: Position }[] = []
+  const failed: { external_id: string; code: string }[] = []
   for (const entry of sites) {
     const from = state.sites.get(entry.cloudId) ?? { t: state.start, i: "" }
-    reads.push({ site: entry, from, result: await siteChanges(read, alias, entry, from, now, end, need) })
+    try {
+      reads.push({ site: entry, from, result: await siteChanges(read, alias, entry, from, now, end, need) })
+    } catch (error) {
+      // One site the provider cannot answer this time is a failed[] entry: the other sites' events are still delivered,
+      // and this site's position stays where it was, so the next read retries it.
+      failedSites.push({ site: entry, from })
+      failed.push({ external_id: entry.cloudId, code: error instanceof ProviderError ? error.code : "UNAVAILABLE" })
+    }
   }
 
   // Oldest first across the sites, up to the earliest time a site's read is incomplete, so no page lists a work item
@@ -394,7 +403,7 @@ export async function readActivity(read: Read, alias: string, input: unknown, no
   const listed: Change[] = []
   // Every site read keeps its position, a new one its start. A site missing from this answer keeps its position too, so
   // when it comes back nothing is listed again; only past MAX_SITES positions is the oldest unseen one dropped.
-  const positions = new Map(reads.map((entry) => [entry.site.cloudId, entry.from]))
+  const positions = new Map([...reads, ...failedSites].map((entry) => [entry.site.cloudId, entry.from]))
   for (const [cloudId, at] of state.sites) if (!positions.has(cloudId) && positions.size < MAX_SITES) positions.set(cloudId, at)
   // A site jammed by a burst moves on past it, and the page says what may be missing from where.
   const jammed = reads.filter((entry) => entry.result.jammed !== undefined)
@@ -412,10 +421,11 @@ export async function readActivity(read: Read, alias: string, input: unknown, no
     consumed++
   }
   const refused = merged.slice(0, consumed).flatMap((change) => refusedIds.get(change.event.external_id) ?? [])
-  const more = consumed < merged.length || reads.some((entry) => !entry.result.exhausted)
+  const more = failed.length > 0 || consumed < merged.length || reads.some((entry) => !entry.result.exhausted)
   const cursor = encodeState(alias, { start: state.start, sites: positions })
   return eventsListResult({ source: SOURCE, account: alias, owner: who.owner }, listed.map((change) => change.event), cursor, more, {
     refused,
+    failed,
     ...(gap === undefined ? {} : { gap }),
     plugin: PACKAGE,
     asOf: new Date(now).toISOString(),

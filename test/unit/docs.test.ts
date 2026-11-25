@@ -2,7 +2,7 @@
 // `effectFor` for every class and level, the install line names the released tag,
 // and model-facing text names no other product and no undeclared tool.
 import { readFileSync } from "node:fs"
-import { ACCESS_LEVELS, effectFor } from "@we-the-rebel-alliance/plugin-contract/access"
+import { ACCESS_LEVELS, effectFor, rulesFor, toolAction } from "@we-the-rebel-alliance/plugin-contract/access"
 import { METHOD_CLASSES } from "@we-the-rebel-alliance/plugin-contract/manifest"
 import { describe, expect, test } from "vitest"
 import { manifest } from "../../src/manifest.ts"
@@ -41,6 +41,32 @@ describe("the documented access table", () => {
   test("every method's class appears in the table", () => {
     const table = documentedAccess()
     for (const [method, item] of Object.entries(manifest.methods)) expect(table.has(item.class), `${method} is class ${item.class}`).toBe(true)
+  })
+})
+
+describe("the permission recipes", () => {
+  test("the generated rules follow the documented table for every method and level", () => {
+    for (const level of ACCESS_LEVELS) {
+      const rules = rulesFor(manifest, level, ["default"])
+      for (const [method, item] of Object.entries(manifest.methods)) {
+        const action = method.startsWith("mcp:") ? toolAction("jira", method.slice(4)) : `jira.${method}`
+        const rule = rules.find((entry) => entry.action === action && entry.resource === "*")
+        expect(rule?.effect, `${method} at ${level}`).toBe(effectFor(item, level))
+      }
+    }
+  })
+
+  test("the documented per-method recipes name declared tools and a narrowing effect", () => {
+    const text = read("docs/configuration.md")
+    for (const action of ["jira_manageJiraSprint", "jira_createJiraIssue", "jira_deleteJiraIssue"]) {
+      expect(text).toContain(`"action": "${action}"`)
+    }
+    const sprint = manifest.methods["mcp:manageJiraSprint"]
+    const issue = manifest.methods["mcp:createJiraIssue"]
+    if (sprint === undefined || issue === undefined) throw new Error("the recipe names an undeclared tool")
+    expect(effectFor(sprint, "read-only")).toBe("deny")
+    expect(effectFor(issue, "read-only")).toBe("deny")
+    expect(text).toContain('"effect": "deny"')
   })
 })
 
