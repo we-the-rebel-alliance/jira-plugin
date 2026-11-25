@@ -167,7 +167,8 @@ describe("the Jira activity page", () => {
       sites: [{ cloudId: "cloud-work-1", url: "https://acme-work.atlassian.net", issues: [{ ...base, id: "2000", key: "OPS-50" }, { ...base, id: "1999", key: "OPS-49" }] }],
     })
     const { handlers } = handlerDeps(fake)
-    const first = await call(handlers, { source: "jira", limit: 1 })
+    // The first page starts from a since window; every next page carries only the cursor, never a lost filter.
+    const first = await call(handlers, { source: "jira", since: "2026-11-25T10:00:00.000Z", limit: 1 })
     expect(first.events.map((event) => event.title)).toEqual(["OPS-49: Same second"])
     expect(first.more).toBe(true)
     const second = await call(handlers, { source: "jira", limit: 1, cursor: first.cursor })
@@ -176,6 +177,9 @@ describe("the Jira activity page", () => {
     const third = await call(handlers, { source: "jira", limit: 1, cursor: second.cursor })
     expect(third.events).toEqual([])
     expect(third.more).toBe(false)
+    const ids = [...first.events, ...second.events, ...third.events].map((event) => event.external_id)
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
   })
 
   test("the request is built from the fixed clock, not the wall clock", async () => {
