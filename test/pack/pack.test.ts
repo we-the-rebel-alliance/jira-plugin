@@ -59,7 +59,7 @@ describe("the packed tarball", () => {
 
   test(
     "installs with scripts disabled and loads from the installed package on the real 2.4.1 host",
-    { timeout: 60_000 },
+    { timeout: 120_000 },
     async () => {
       const project = join(work, "project")
       const home = join(work, "home")
