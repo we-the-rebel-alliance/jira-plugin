@@ -43,9 +43,14 @@ describe("the packed tarball", () => {
   test("holds exactly the files the package declares, and the built entry", () => {
     const paths = packed.files.map((file) => file.path).sort()
     expect(paths).toEqual(
-      ["package.json", "README.md", "LICENSE", "dist/index.js", "skills/jira/SKILL.md", "skills/jira-write/SKILL.md", "assets/icon.svg", "assets/icon-128.png", "assets/icon-256.png"].sort(),
+      ["package.json", "README.md", "LICENSE", "NOTICE", "dist/index.js", "skills/jira/SKILL.md", "skills/jira-write/SKILL.md", "assets/icon.svg", "assets/icon-128.png", "assets/icon-256.png"].sort(),
     )
     expect(paths.some((path) => path.startsWith("fixtures/") || path.startsWith("node_modules/") || path.endsWith(".ts"))).toBe(false)
+    const notice = execFileSync("tar", ["-xOzf", join(work, packed.filename), "package/NOTICE"], { cwd: work, encoding: "utf8" })
+    expect(notice).toContain("yaml 2.9.1 (ISC)")
+    expect(notice).toContain("@we-the-rebel-alliance/plugin-contract 0.0.0 (MIT)")
+    expect(notice).toContain("zod 4.6.7 (MIT)")
+    expect(notice).toContain("Public Suffix List (MPL-2.0)")
     expect(packed.size).toBeLessThan(200 * 1024)
   })
 

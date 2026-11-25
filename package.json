@@ -23,7 +23,8 @@
     "skills",
     "assets",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
