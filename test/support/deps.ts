@@ -1,6 +1,5 @@
 import type { Plugin } from "@opencode/plugin"
 import type { Bus } from "@we-the-rebel-alliance/plugin-contract/bus"
-import type { AccessRegistration } from "@we-the-rebel-alliance/plugin-contract/access"
 import type { MethodCall } from "@we-the-rebel-alliance/plugin-contract/register"
 import { accountPlan, serverNames } from "../../src/accounts.ts"
 import { createHandlers } from "../../src/handlers/index.ts"
@@ -57,8 +56,7 @@ export function methodCall(account: string, overrides: Partial<MethodCall> = {})
     account,
     door: "rpc",
     bus: { emit: async () => ({ ok: true }) } as unknown as Bus,
-    access: { level: "all", aliases: [], rules: [], problems: [], dispose: async () => {} } satisfies AccessRegistration,
-    unguardedAgents: async () => [],
+    unguardedAgents: async () => ({ ok: true, agents: [] }),
     ...overrides,
   }
 }

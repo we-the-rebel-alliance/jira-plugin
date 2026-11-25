@@ -1,7 +1,7 @@
 import type { Plugin } from "@opencode/plugin"
 import { describe, expect, test, vi } from "vitest"
 import type { StatusAnswer } from "@we-the-rebel-alliance/plugin-contract/accounts"
-import { formatStatus } from "../../src/command.ts"
+import { agentsFromHost, formatStatus } from "../../src/command.ts"
 import { watchAccountStatus } from "../../src/watch.ts"
 import { FakeJira } from "../support/fake-jira.ts"
 import { handlerDeps, methodCall } from "../support/deps.ts"
@@ -48,9 +48,7 @@ describe("the status answer", () => {
     const answer = (await handlers.status.run(
       {},
       methodCall("work", {
-        unguardedAgents: async () => {
-          throw new Error("the host would not list agents")
-        },
+        unguardedAgents: async () => ({ ok: false, error: "the agent list could not be read: the host would not list agents" }),
       }),
     )) as StatusAnswer
     expect(answer.state).toBe("error")
@@ -60,9 +58,28 @@ describe("the status answer", () => {
 
   test("unguarded agents are named", async () => {
     const { handlers } = handlerDeps()
-    const answer = (await handlers.status.run({}, methodCall("work", { unguardedAgents: async () => ["explore"] }))) as StatusAnswer
+    const answer = (await handlers.status.run({}, methodCall("work", { unguardedAgents: async () => ({ ok: true, agents: ["explore"] }) }))) as StatusAnswer
     expect(answer.unguardedAgents).toEqual(["explore"])
     expect(answer.state).toBe("ready")
+  })
+})
+
+describe("the /jira command's agent question", () => {
+  test("passes a result, and an unreadable list is an error rather than an empty list", async () => {
+    const listed = await agentsFromHost({ agent: { list: async () => ({ data: [] }) } } as never, [])
+    expect(listed).toEqual({ ok: true, agents: [] })
+    const failed = await agentsFromHost(
+      {
+        agent: {
+          list: async () => {
+            throw new Error("the host would not list agents")
+          },
+        },
+      } as never,
+      [],
+    )
+    expect(failed.ok).toBe(false)
+    if (!failed.ok) expect(failed.error).toContain("agent list could not be read")
   })
 })
 

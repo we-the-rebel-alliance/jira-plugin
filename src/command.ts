@@ -1,19 +1,19 @@
 import type { Plugin } from "@opencode/plugin"
 import { unguardedAgents, type PermissionRule } from "@we-the-rebel-alliance/plugin-contract/access"
 import type { StatusAnswer } from "@we-the-rebel-alliance/plugin-contract/accounts"
+import type { UnguardedAgentsResult } from "@we-the-rebel-alliance/plugin-contract/access"
 import { safeReason } from "./redact.ts"
-import type { AgentsAnswer } from "./status.ts"
 
 /**
  * The agents whose rules no longer give every generated rule its effect, asked through the host for the `/jira` command.
  * The status handler asks the same question through `call.unguardedAgents()`; only the question's source differs.
  */
-export async function agentsFromHost(ctx: Pick<Plugin.Context, "agent">, rules: readonly PermissionRule[]): Promise<AgentsAnswer> {
+export async function agentsFromHost(ctx: Pick<Plugin.Context, "agent">, rules: readonly PermissionRule[]): Promise<UnguardedAgentsResult> {
   try {
-    return { agents: unguardedAgents((await ctx.agent.list()).data, rules) }
+    return { ok: true, agents: unguardedAgents((await ctx.agent.list()).data, rules) }
   } catch (error) {
     // An unreadable agent list is unknown, never zero.
-    return { agents: [], problem: `the agent list could not be read: ${safeReason(error)}` }
+    return { ok: false, error: `the agent list could not be read: ${safeReason(error)}` }
   }
 }
 
