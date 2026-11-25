@@ -1,4 +1,4 @@
-// The real OpenCode 2.4.1 host, through the kit's harness: the built dist/ loads, the plugin's own methods are tools and
+// The real OpenCode 2.4.1 host, through the kit's harness: the committed dist/ loads, the plugin's own methods are tools and
 // RPC methods, and the two-account refusals and status answer hold on the real host.
 import { fileURLToPath } from "node:url"
 import { createHost } from "@we-the-rebel-alliance/plugin-contract/kit"

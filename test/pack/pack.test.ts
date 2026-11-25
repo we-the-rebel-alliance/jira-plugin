@@ -29,7 +29,7 @@ const run = (command: string, args: string[], cwd: string, env: Record<string, s
   execFileSync(command, args, { cwd, encoding: "utf8", env: { ...process.env, ...env } })
 
 beforeAll(() => {
-  run("node", [join(root, "scripts", "build.mjs")], root)
+  run("npm", ["run", "bundle"], root)
   const output = run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", work], root)
   const [first] = JSON.parse(output) as Packed[]
   if (first === undefined) throw new Error("npm pack answered no tarball")

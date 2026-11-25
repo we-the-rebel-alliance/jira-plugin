@@ -21,7 +21,7 @@ There are no runtime dependencies: everything the plugin uses is bundled into `d
 |---|---|
 | `npm run lint` | Biome over the repository |
 | `npm run typecheck` | TypeScript, strict, no emit |
-| `npm run build` | esbuild to `dist/index.js`, and that it imports only the host module and Node built-ins |
+| `npm run bundle` | esbuild to `dist/index.js`, and that it imports only the host module and Node built-ins; `dist/` is committed, so regenerate it and commit the change |
 | `npx plugin-kit docs --check` | the generated doc sections match the manifest |
 | `npm test` | unit, conformance (compares `fixtures/conformance.json`) and host tests on the built plugin |
 | `npx plugin-kit check` | conformance T0 and T1 on the real 2.4.1 host, the doc file set, forbidden patterns, no bundled kit |

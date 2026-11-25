@@ -26,8 +26,8 @@ only and reaches no other Atlassian product.
 | Command | Does |
 |---|---|
 | `npm ci` | installs dev tooling only; there are no runtime dependencies |
-| `npm run check` | lint, typecheck, build, docs drift, unit, conformance, host, `plugin-kit check`, pack |
-| `npx plugin-kit check` | conformance (T0 and T1), the doc file set, forbidden patterns and no bundled kit; it does not run lint, typecheck, build or the unit tests, which are `npm run check`'s job |
+| `npm run check` | lint, typecheck, bundle, dist freshness, docs drift, unit, conformance, host, `plugin-kit check`, pack |
+| `npx plugin-kit check` | conformance (T0 and T1), the doc file set, forbidden patterns and no bundled kit; it does not run lint, typecheck, bundle or the unit tests, which are `npm run check`'s job |
 | `npx plugin-kit docs` | regenerates the generated doc sections from the manifest |
 | `RECORD=1 npm test` | rewrites `fixtures/conformance.json` from the handlers; every other run only compares. `npx plugin-kit record` cannot call the handlers: it validates and redacts the committed fixture instead |
 | `npm run test:pack` | packs, installs and loads the tarball |
@@ -52,7 +52,7 @@ skills/                 jira and jira-write
 test/unit test/conformance test/host test/pack
 docs/                   capabilities, configuration, accounts, automations, architecture, security
 fixtures/conformance.json
-scripts/build.mjs       the one build script
+scripts/build.mjs       the one bundle script
 ```
 
 ## Rules
@@ -108,7 +108,7 @@ not the section. Hand-written text is plain English: short sentences, one term p
 
 ## Forbidden
 
-- Editing `dist/` by hand, or committing it outside a release.
+- Editing `dist/` by hand. It is committed and regenerated with `npm run bundle`; commit the regenerated file.
 - Adding runtime dependencies, peer dependencies or lifecycle scripts.
 - Naming any app in code, manifest or docs, except in an `x-<app>` key.
 - Copying contract code into this repository.
