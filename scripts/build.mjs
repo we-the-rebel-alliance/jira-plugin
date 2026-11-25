@@ -1,52 +1,50 @@
-// Bundles each entry the host loads into one self-contained file: src/index.ts to dist/index.js (the server part) and
-// src/tui.ts to dist/tui.js (the terminal UI part). Shared code, such as the status model and the RPC contract, is
-// inlined into both. No chunks and no relative imports, because OpenCode reloads a plugin in place and reuses the
-// module records it already holds for unchanged paths: a new entry must never import an older sibling module.
-// Only the modules the host provides stay external. The build fails if an output imports anything else.
-import { build } from "esbuild"
-import { readdirSync, readFileSync, rmSync } from "node:fs"
-import { join } from "node:path"
+// Build the one server bundle: dist/index.js, self-contained except for the host module and Node built-ins.
+//
+// The bundle is what plugin-kit loads through OpenCode's resolver and what the release attaches. Nothing from the
+// contract package is external: `@we-the-rebel-alliance/plugin-contract` is a devDependency, so the plugin carries the
+// modules it uses. A leftover import that is neither `node:` nor `@opencode/plugin` fails the build, because a host
+// cannot resolve it at runtime.
+import { mkdirSync, readFileSync, rmSync } from "node:fs"
 import { fileURLToPath } from "node:url"
+import { build } from "esbuild"
 
-const root = fileURLToPath(new URL("..", import.meta.url))
-const HOST = ["@opencode/plugin", "@opencode/plugin/*", "@opentui/*", "solid-js", "solid-js/*"]
-const provided = (path) => path.startsWith("node:") || HOST.some((name) => (name.endsWith("/*") ? path.startsWith(name.slice(0, -1)) : path === name))
+const _root = fileURLToPath(new URL("..", import.meta.url))
+const entry = fileURLToPath(new URL("../src/index.ts", import.meta.url))
+const outfile = fileURLToPath(new URL("../dist/index.js", import.meta.url))
+const allowed = [/^node:/, /^@opencode\/plugin(?:\/|$)/]
 
-/** The plugin's version, from package.json, as one string: the bundles carry nothing else of package.json. */
-const version = {
-  name: "version",
-  setup(editor) {
-    editor.onLoad({ filter: /[\\/]src[\\/]version\.ts$/ }, () => {
-      const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-      return { contents: `export const VERSION = ${JSON.stringify(version)}`, loader: "ts" }
-    })
-  },
-}
+rmSync(fileURLToPath(new URL("../dist", import.meta.url)), { recursive: true, force: true })
+mkdirSync(fileURLToPath(new URL("../dist", import.meta.url)), { recursive: true })
 
-rmSync(join(root, "dist"), { recursive: true, force: true })
 const result = await build({
-  absWorkingDir: root,
-  entryPoints: { index: "src/index.ts", tui: "src/tui.ts" },
-  outdir: "dist",
+  entryPoints: [entry],
+  outfile,
   bundle: true,
-  splitting: false,
   format: "esm",
   platform: "node",
-  target: "es2023",
-  external: HOST,
+  target: ["node24"],
+  sourcemap: false,
   legalComments: "none",
-  metafile: true,
   logLevel: "warning",
-  plugins: [version],
+  metafile: true,
+  external: ["@opencode/plugin", "@opencode/plugin/*"],
 })
 
-const problems = Object.entries(result.metafile.outputs).flatMap(([file, output]) =>
-  output.imports.filter((entry) => !entry.external || !provided(entry.path)).map((entry) => `${file} imports ${entry.path}`),
-)
-const files = readdirSync(join(root, "dist")).sort()
-if (JSON.stringify(files) !== JSON.stringify(["index.js", "tui.js"])) problems.push(`dist/ must hold exactly index.js and tui.js, found ${files.join(", ")}`)
-if (problems.length) {
-  console.error(`build: the bundles are not self-contained:\n  ${problems.join("\n  ")}`)
+const text = readFileSync(outfile, "utf8")
+const specifiers = new Set()
+for (const match of text.matchAll(/\b(?:from\s*|import\s*\(\s*|require\s*\(\s*)["']([^"']+)["']/g)) {
+  if (match[1] !== undefined) specifiers.add(match[1])
+}
+const bad = [...specifiers].filter((specifier) => !allowed.some((pattern) => pattern.test(specifier))).sort()
+if (bad.length > 0) {
+  console.error(`build: dist/index.js imports modules the host cannot resolve: ${bad.join(", ")}`)
   process.exit(1)
 }
-console.log("build: dist/index.js and dist/tui.js are self-contained.")
+
+const bytes = Buffer.byteLength(text)
+if (bytes === 0) {
+  console.error("build: dist/index.js is empty")
+  process.exit(1)
+}
+const inputs = Object.keys(result.metafile.inputs)
+console.log(`build: dist/index.js ${bytes} bytes, ${inputs.length} inputs, ${specifiers.size} external specifiers`)
