@@ -1,14 +1,13 @@
-// The docs and skills must match the code: tool names, the access blocks, error codes, the uninstall order and the
-// Jelly guide. Every tool count they state is checked against src/jira-tools.ts, so a change there cannot leave a stale
-// number behind.
+// The docs and skills must match the code: tool names, error codes, the tested releases, the fixed-context budget and
+// the install and uninstall lines. Every count they state is checked against src/jira-tools.ts, so a change there cannot
+// leave a stale number behind.
 import { describe, expect, test } from "bun:test"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { CODES, TESTED_HOSTS, UNTESTED_EXAMPLE } from "../../src/constants.js"
+import { CODES, NAMESPACE_DESCRIPTION, TESTED_HOSTS, UNTESTED_EXAMPLE } from "../../src/constants.js"
 import { DESTRUCTIVE_TOOLS, EVENTS_TOOL, EXPORT_TOOLS, PARAMETERS, PROBE_METHOD, READ_TOOLS, WRITE_TOOLS } from "../../src/jira-tools.js"
 import { METHODS, NEXT_STEPS, TOOLS_RPC_ID } from "../../src/tools-rpc.js"
-import { ACCESS, defaultRules } from "../../src/permissions.js"
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url))
 // Everything a user or the model reads about the current release.
@@ -24,22 +23,15 @@ const FILES = [
 const KNOWN = [...READ_TOOLS, ...EXPORT_TOOLS, ...WRITE_TOOLS, ...DESTRUCTIVE_TOOLS]
 /** What the docs may name besides Jira's tools: the source's own `jira_events_list` and `jira_probe`. */
 const OWN = [EVENTS_TOOL, PROBE_METHOD]
+const REPO = "github:we-the-rebel-alliance/jira-plugin"
 const raw = (file: string) => readFileSync(join(ROOT, file), "utf8")
 const text = (file: string) => raw(file).replace(/\s+/g, " ")
-/** The per-tool deny the README and the guide give as way 3, for the tool a reader is likeliest to want off. */
-const OPT_IN_TOOL = '{ "action": "jira_deleteJiraIssue", "resource": "*", "effect": "deny" }'
-
-/** The release the install specs name: package.json's version. */
-const VERSION = (JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { version: string }).version
-/** The README's upgrade example removes an earlier release's entry; it must name one before VERSION. */
-const UPGRADE_FROM = /remove the old entry with `opencode plugin remove github:joe-broadhead\/opencode-jira#v(\d+)\.(\d+)\.(\d+)`/
+const skillFiles = readdirSync(join(ROOT, "skills")).map((name) => [`${name}`, readFileSync(join(ROOT, "skills", name, "SKILL.md"), "utf8")] as const)
 
 describe("docs", () => {
   test.each(FILES)("%s states no count of read, write or declared tools that could go stale", (file) => {
-    const counts = [...text(file).matchAll(/\b\d+ (?:known )?(?:read|write)(?:s\b| tools\b| read-only)|\b\d+ tools are declared/g)].map((match) => match[0])
-    // The Jelly guide counts the declaration: every known tool and the plugin's own events_list, a read.
-    const declared = [`${KNOWN.length + 1} tools are declared`, `${READ_TOOLS.length + 1} read-only`]
-    const stale = counts.filter((count) => !count.startsWith(`${READ_TOOLS.length} read`) && !count.startsWith(`${WRITE_TOOLS.length} write`) && count !== `${KNOWN.length} tools are declared` && !declared.includes(count))
+    const counts = [...text(file).matchAll(/\b\d+ (?:known )?(?:read|write)(?:s\b| tools\b| read-only)/g)].map((match) => match[0])
+    const stale = counts.filter((count) => !count.startsWith(`${READ_TOOLS.length} read`) && !count.startsWith(`${WRITE_TOOLS.length} write`))
     expect(stale).toEqual([])
   })
 
@@ -48,87 +40,37 @@ describe("docs", () => {
     expect(named.filter((tool) => !KNOWN.includes(tool) && !OWN.includes(tool))).toEqual([])
   })
 
-  test.each(["README.md", "docs/configuration.md", "docs/scripting.md", "docs/jelly.md", "SECURITY.md"])("%s says nothing provisional or pending", (file) => {
+  test.each(FILES)("%s says nothing provisional or pending", (file) => {
     expect(text(file)).not.toMatch(/provisional|not yet (?:checked|published|signed)|private package|TODO/i)
   })
 
-  // The exceptions are the install spec, which names the release tag by design (the GitHub install takes `#v<version>`),
-  // and the upgrade example, which removes an earlier release's entry.
-  test("the README names no version of the plugin, except its install spec", () => {
-    expect(text("README.md").replaceAll(`opencode-jira#v${VERSION}`, "").replace(UPGRADE_FROM, "")).not.toMatch(/opencode-jira@\d|\b0\.\d+\.\d+\b|\bv\d+\.\d+\.\d+\b/)
-  })
-
-  // R18: nothing is restricted by default, so the README shows how to restrict instead. Every change is `ask` in the
-  // ask-changes block and `deny` in the read-only one, and the guide repeats the per-tool rule.
-  test("the README's restricting blocks cover every change and export, and the guide gives the per-tool rule", () => {
-    const blocks = [...raw("README.md").matchAll(/```json\n(\[[\s\S]*?\])\n```/g)].map((match) => JSON.parse(match[1]!) as { action: string; effect: string }[])
-    const effectIn = (rules: { action: string; effect: string }[], tool: string) => rules.find((rule) => rule.action === `jira_${tool}`)?.effect
-    for (const tool of [...EXPORT_TOOLS, ...WRITE_TOOLS, ...DESTRUCTIVE_TOOLS]) {
-      expect({ tool, ask: effectIn(defaultRules("ask-changes"), tool) }).toEqual({ tool, ask: "ask" })
-      expect({ tool, deny: effectIn(defaultRules("read-only"), tool) }).toEqual({ tool, deny: "deny" })
-      const printed = (rules: { action: string; effect: string }[]) => blocks.some((block) => JSON.stringify(block) === JSON.stringify(rules))
-      expect({ tool, askPrinted: printed(defaultRules("ask-changes")), denyPrinted: printed(defaultRules("read-only")) }).toEqual({ tool, askPrinted: true, denyPrinted: true })
-    }
-    // The top-level per-tool recipe the guide and the README give is a deny, never an allow.
-    expect(text("README.md")).toContain(OPT_IN_TOOL)
-    expect(text("docs/configuration.md")).toContain(OPT_IN_TOOL)
-  })
-
-  test.each(FILES)("%s puts no ask or allow recipe for a Jira tool at the top level, where it would reach Explore", (file) => {
+  test.each(FILES)("%s points at this repository, on master", (file) => {
     const source = raw(file)
-    // Every JSON example that is a config: its top-level permissions only tighten.
-    for (const [, body] of source.matchAll(/```json\n([^]*?)```/g)) {
-      let config: unknown
-      try {
-        config = JSON.parse(body!)
-      } catch {
-        continue
+    expect(source).not.toContain("joe-broadhead")
+    expect(source).not.toContain("opencode-jira")
+    for (const match of source.matchAll(/https:\/\/github\.com\/([^)\s]+)/g)) {
+      const url = match[1]!
+      expect({ file, org: url.startsWith("we-the-rebel-alliance/") }).toEqual({ file, org: true })
+      if (/^(?:blob|tree)\//.test(url.slice("we-the-rebel-alliance/jira-plugin/".length))) {
+        expect({ file, url }).toEqual({ file, url: expect.stringMatching(/^we-the-rebel-alliance\/jira-plugin\/(?:blob|tree)\/master\//) })
       }
-      const top = !Array.isArray(config) && typeof config === "object" && config !== null ? ((config as { permissions?: { action: string; effect: string }[] }).permissions ?? []) : []
-      expect(top.filter((rule) => rule.action.startsWith("jira_") && rule.effect !== "deny")).toEqual([])
     }
-    // Every ask or allow rule for one tool sits in an agent's own rules, said in its paragraph or code block. The
-    // plugin's own block, which the plugin inserts itself, is the one exception.
-    const blocks = source.split(/\n\s*\n/)
-    blocks.forEach((block, index) => {
-      if (!/\{ "action": "jira_[A-Za-z]+", "resource": "\*", "effect": "(?:ask|allow)" \}/.test(block)) return
-      const context = `${blocks[index - 1] ?? ""}\n${block}`
-      if (/The plugin adds these\s+rules/.test(context)) return
-      // "in your permissions or an agent's own" offers the top level too: it fails.
-      const agentLevel = /agent's own|"agents"/.test(context) && !/\b(?:in|to) (?:your|the same) `permissions`|here or in an agent's own/.test(context.replace(/\s+/g, " "))
-      expect({ file, block: block.slice(0, 120), agentLevel }).toEqual({ file, block: block.slice(0, 120), agentLevel: true })
-    })
-  })
-
-  // R18: the `all` block allows everything, and no other example in the docs or the skills hands a change an allow: a
-  // reader who restricts must not be told to reopen one.
-  test("no doc or skill gives a change an allow rule outside the generated block", () => {
-    for (const file of FILES) {
-      const source = raw(file)
-      for (const tool of [...EXPORT_TOOLS, ...WRITE_TOOLS, ...DESTRUCTIVE_TOOLS]) {
-        const rules = [...source.matchAll(/\{[^{}]*\}/g)].map((match) => match[0])
-        const allowed = rules.filter((rule) => rule.includes(`"action": "jira_${tool}"`) && /"effect"\s*:\s*"allow"/.test(rule))
-        // The one exception is the README's generated `all` block, whose line is a literal allow for every tool.
-        const generated = file === "README.md" && source.includes(`{ "action": "jira_${tool}", "resource": "*", "effect": "allow" }`)
-        expect({ file, tool, allowed: allowed.length, generated }).toEqual({ file, tool, allowed: generated ? 1 : 0, generated })
-      }
+    for (const match of source.matchAll(/https:\/\/raw\.githubusercontent\.com\/([^)\s]+)/g)) {
+      expect({ file, url: match[1] }).toEqual({ file, url: expect.stringMatching(/^we-the-rebel-alliance\/jira-plugin\/master\//) })
     }
   })
 
-  // R18: the read-only block is the strict agent's shortcut; the guide's own strict recipe repeats the deny after its
-  // namespace ask, so no change reopens.
-  test("the guide's strict recipe repeats every deny after its jira_* ask, so none reopens", () => {
-    const recipe = raw("docs/configuration.md").split("A read-only agent that asks for one change")[1]?.split("```json")[1]?.split("```")[0] ?? ""
-    const ask = recipe.indexOf('"action": "jira_*", "resource": "*", "effect": "ask"')
-    expect(ask).toBeGreaterThanOrEqual(0)
-    for (const name of [...EXPORT_TOOLS, ...DESTRUCTIVE_TOOLS]) expect(recipe).not.toContain(`"action": "jira_${name}", "resource": "*", "effect": "allow"`)
+  test("the README installs from a release tag, never from an untagged repository, and names the first release", () => {
+    const readme = text("README.md")
+    const installs = [...raw("README.md").matchAll(/opencode plugin add ([^\s`]+)/g)].map((match) => match[1]!)
+    expect(installs).toEqual([`${REPO}#v<version>`])
+    expect(readme).toContain(`"package": "${REPO}#v<version>"`)
+    expect(readme).toContain("The first release on plugin-contract is `v0.0.0` (phase 4b).")
+    expect(readme).toContain("the repository carries no `dist/`, and OpenCode runs no build when it installs from Git.")
   })
 
-  test("the README's first lines say every tool is allowed by default, and the Jelly summary says the plugin changes things", () => {
+  test("the README's first lines say every tool is allowed by default", () => {
     expect(text("README.md")).toContain("Every tool is allowed by default.")
-    const { jelly } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { jelly: { summary: string } }
-    expect(jelly.summary).toMatch(/make changes/)
-    expect(jelly.summary.length).toBeLessThanOrEqual(120)
   })
 
   test("the docs need no API token, and document the token entry without a credential", () => {
@@ -163,15 +105,15 @@ describe("docs", () => {
     const uninstall = /## Uninstall(.*?)## Links/.exec(text("README.md"))?.[1] ?? ""
     const logout = uninstall.indexOf("opencode mcp logout jira")
     const list = uninstall.indexOf("opencode auth list")
-    const remove = uninstall.indexOf(`opencode plugin remove github:joe-broadhead/opencode-jira#v${VERSION}`)
+    const remove = uninstall.indexOf(`opencode plugin remove ${REPO}`)
     expect(logout).toBeGreaterThanOrEqual(0)
     expect(list).toBeGreaterThan(logout)
     expect(remove).toBeGreaterThan(list)
   })
 
-  // R6: one typed code table (CODES in src/constants.ts). `jiraError`, `errorText` and `codeText` take a PluginCode, so
-  // a code outside it does not compile; this finds any code that escaped the helpers, and keeps the README's table
-  // equal to the table in both directions.
+  // One typed code table (CODES in src/constants.ts). `jiraError`, `errorText` and `codeText` take a PluginCode, so a
+  // code outside it does not compile; this finds any code that escaped the helpers, and keeps the README's table equal to
+  // the table in both directions.
   test("every code raised in src/ is in CODES, and every non-rpc code in CODES is raised", () => {
     const sources = readdirSync(join(ROOT, "src")).filter((name) => name.endsWith(".ts")).map((name) => [name, readFileSync(join(ROOT, "src", name), "utf8")] as const)
     const found = new Set(sources.flatMap(([, source]) => [...source.matchAll(/(?:jiraError|errorText|codeText)\(\s*"([A-Z][A-Z_]+)"/g)].map((match) => match[1]!)))
@@ -203,23 +145,6 @@ describe("docs", () => {
     expect(named.filter((code) => !(code in CODES))).toEqual([])
   })
 
-  // R7 with R18: the README prints the whole block for every `access` value, generated from defaultRules(access), so a
-  // class or an option change cannot leave the README showing a block that is not what runs.
-  test("the README prints the whole default-rules block for each access value, and each equals defaultRules(access)", () => {
-    const blocks = [...raw("README.md").matchAll(/```json\n(\[[\s\S]*?\])\n```/g)].map((match) => JSON.parse(match[1]!) as { action: string; effect: string }[])
-    const arrays = blocks.filter((value) => Array.isArray(value) && value.some((rule) => rule?.action === "jira_*"))
-    // The three generated blocks, one per value, plus the agent examples that repeat a subset.
-    for (const access of ACCESS) {
-      const expected = defaultRules(access)
-      const found = arrays.filter((value) => JSON.stringify(value) === JSON.stringify(expected))
-      expect({ access, found: found.length }).toEqual({ access, found: 1 })
-    }
-    // No elided block anywhere: every element is a rule, never a placeholder string.
-    for (const value of blocks) if (Array.isArray(value)) for (const rule of value) expect(typeof rule).toBe("object")
-    // The Permissions section opens with the family sentence.
-    expect(/## Permissions\n\n\*\*Every tool is allowed by default\.\*\*/.test(raw("README.md"))).toBe(true)
-  })
-
   // R8: every "tested on ..." mention is TESTED_HOSTS, and the untested example is a version that is not a release.
   test("every tested-on mention equals TESTED_HOSTS, and the untested example is not a tested release", () => {
     let mentions = 0
@@ -232,23 +157,22 @@ describe("docs", () => {
       }
     }
     for (const file of ["README.md", "AGENTS.md", "SECURITY.md", "docs/configuration.md"]) check(file, raw(file))
-    // The release heading is `## [0.0.0] - <date>` once the release kit has dated it; before that, `## [Unreleased]`
-    // (or the older `- Unreleased`). Only the first section is read: one heading line, never a span across sections.
-    const changelog = /## \[(?:Unreleased\]|[^\]\n]*\] - (?:Unreleased|\d{4}-\d{2}-\d{2}))\n([\s\S]*?)(?:\n## \[|$)/.exec(raw("CHANGELOG.md"))?.[1] ?? ""
+    // The changelog's first section is the current, unreleased one.
+    const changelog = /## 0\.0\.0 \(unreleased\)\n([\s\S]*?)(?:\n## |$)/.exec(raw("CHANGELOG.md"))?.[1] ?? ""
     expect(changelog.length).toBeGreaterThan(0)
-    check("CHANGELOG.md (Unreleased)", changelog)
+    check("CHANGELOG.md (0.0.0)", changelog)
     expect(mentions).toBeGreaterThanOrEqual(2)
-    // The places that list the releases without the words "tested on" name the same four.
-    const list = `${TESTED_HOSTS.slice(0, -1).join(", ")} and ${TESTED_HOSTS.at(-1)}`
+    // The places that list the releases without the words "tested on" name the same one.
+    const list = TESTED_HOSTS.length === 1 ? TESTED_HOSTS[0]! : `${TESTED_HOSTS.slice(0, -1).join(", ")} and ${TESTED_HOSTS.at(-1)}`
     for (const file of ["AGENTS.md", "docs/configuration.md", "CONTRIBUTING.md"]) expect({ file, list: text(file).includes(list) }).toEqual({ file, list: true })
-    // The example of a release the checks do not run on is 2.2.99, never one of the tested ones.
+    // The example of a release the checks do not run on is 2.5.0, never the tested one.
     expect(text("docs/configuration.md")).toContain(UNTESTED_EXAMPLE)
     for (const version of TESTED_HOSTS) expect(text("docs/configuration.md")).not.toContain(`inside the range, such as ${version}`)
   })
 
   // R9: shipped text states behaviour, never who decided it, and names no lane.
   test("the shipped docs use no internal wording", () => {
-    const banned = /\bowner(?:'s)? (?:decision|ruling|sign-off|call)\b|\bthe lead(?:'s)? (?:decision|ruling|audit|report|review)\b|\bhey-jelly\s*#|\b(?:audit|review|reconcile) lane\s+[A-Z]\d\b|\blane\s+G\d\b/i
+    const banned = /\bowner(?:'s)? (?:decision|ruling|sign-off|call)\b|\bthe lead(?:'s)? (?:decision|ruling|audit|report|review)\b|\bhey-\w+\s*#|\b(?:audit|review|reconcile) lane\s+[A-Z]\d\b|\blane\s+G\d\b/i
     for (const file of FILES) expect({ file, hit: banned.exec(text(file))?.[0] }).toEqual({ file, hit: undefined })
   })
 
@@ -298,22 +222,6 @@ describe("docs", () => {
     expect(examples).toBeGreaterThanOrEqual(3)
   })
 
-  test("the Jelly guide describes the declaration as Jelly reads it, with no placeholder or version", () => {
-    const guide = text("docs/jelly.md")
-    expect(guide).not.toMatch(/`latest` is|None yet/)
-    expect(guide).toContain("the one line in `jelly.summary`, and beside it the mark in `jelly.icon`")
-    // Jelly's contracts drop an unknown top-level key; they do not refuse the declaration for it.
-    expect(guide).toContain("drop a top-level key they don't know")
-    expect(guide).not.toMatch(/refuses this declaration|accepts no unknown keys/)
-    // R18: every declared tool is allowed, and a tool Atlassian adds later is undeclared, so Jelly runs it with the
-    // plugin's own default: the guide says so plainly, a write included.
-    // Every known tool and the plugin's own events_list, a read.
-    expect(guide).toContain(`${KNOWN.length + 1} tools are declared (${READ_TOOLS.length + 1} read-only), every tool in \`src/jira-tools.ts\` and the plugin's own \`jira_events_list\``)
-    expect(guide).toContain("A tool Atlassian adds later, a write included, is not declared, so in Jelly it runs with the plugin's own default: allowed")
-    const skills = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).jelly.skills as string[]
-    expect(guide).toContain(`Declared: ${skills.map((name) => `\`${name}\``).join(", ")}.`)
-  })
-
   test("the scripting guide points at the known reads, and gives Atlassian's rate limits, the cloudId and one call at a time", () => {
     const guide = text("docs/scripting.md")
     expect(guide).toContain("(`READ_TOOLS` in `src/jira-tools.ts`)")
@@ -324,21 +232,33 @@ describe("docs", () => {
     expect(guide).toContain("Rovo credits")
   })
 
-  test("the README's limits say the tool table comes from Atlassian's docs, and what Jelly cannot ask about", () => {
-    const readme = text("README.md")
-    expect(readme).toContain("The tool table comes from Atlassian's docs")
-    expect(readme).toContain("In Jelly, a tool Atlassian adds is not asked about")
-    expect(readme).not.toContain("has not been reconciled with a live tool list")
+  test("the README's limits say the tool table comes from Atlassian's docs", () => {
+    expect(text("README.md")).toContain("The tool table comes from Atlassian's docs")
+    expect(text("README.md")).not.toContain("has not been reconciled with a live tool list")
   })
 })
 
-describe("the upgrade example", () => {
-  test("removes an earlier release than the one the install specs name", () => {
-    const match = UPGRADE_FROM.exec(text("README.md"))
-    expect(match).not.toBeNull()
-    const earlier = match!.slice(1, 4).map(Number)
-    const current = VERSION.split(".").map(Number)
-    const order = earlier.map((part, index) => part - current[index]!).find((difference) => difference !== 0) ?? 0
-    expect(order).toBeLessThan(0)
+// Rule 4's fixed-context budget (T0 static): the namespace line at most 400 characters, each skill description at most
+// 300. The namespace is what Code Mode shows on every turn; a skill's description is what OpenCode advertises.
+describe("the fixed context", () => {
+  test("the namespace line is one line of at most 400 characters", () => {
+    expect(NAMESPACE_DESCRIPTION.length).toBeLessThanOrEqual(400)
+    expect(NAMESPACE_DESCRIPTION).not.toContain("\n")
+    expect(NAMESPACE_DESCRIPTION.length).toBeGreaterThan(0)
+  })
+
+  test.each(skillFiles)("%s describes itself in one line of at most 300 characters", (name, source) => {
+    const description = /^description: (.*)$/m.exec(source)?.[1] ?? ""
+    expect({ name, length: description.length, oneLine: !description.includes("\n") }).toEqual({ name, length: expect.any(Number), oneLine: true })
+    expect({ name, within: description.length > 0 && description.length <= 300 }).toEqual({ name, within: true })
+  })
+
+  test("no doc or skill names a tool outside this plugin", () => {
+    // Every tool-shaped name in the shipped text is one of this plugin's, its own two, or a host or neighbour tool the
+    // text names on purpose with its owner's prefix. The plugin never invents a foreign `jira_*` name.
+    for (const file of FILES) {
+      const named = [...text(file).matchAll(/\bjira_([a-zA-Z][A-Za-z0-9]*)(?![\w*])/g)].map((match) => match[1]!)
+      expect({ file, unknown: named.filter((tool) => !KNOWN.includes(tool) && !OWN.includes(tool)) }).toEqual({ file, unknown: [] })
+    }
   })
 })

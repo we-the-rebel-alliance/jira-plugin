@@ -17,6 +17,8 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { compareVersions, RELEASE_VERSION, VERSION_SOURCE } from "./release-version.mjs"
 
+// This copied pre-4a script knows only the headings below. The required `## 0.0.0 (unreleased)` heading is not one
+// of them, so no release can be planned from it; 4b's plugin-kit replaces this script and cuts the heading.
 export const UNRELEASED_HEADING = "## [Unreleased]"
 export const EARLIER_HEADING = "## Earlier releases on npm"
 

@@ -4,7 +4,7 @@ Every option is optional. The smallest setup is one entry in `plugins`:
 
 ```json
 {
-  "plugins": [{ "package": "github:joe-broadhead/opencode-jira#v0.0.7" }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>" }]
 }
 ```
 
@@ -12,7 +12,7 @@ To set options, use the object form:
 
 ```json
 {
-  "plugins": [{ "package": "github:joe-broadhead/opencode-jira#v0.0.7", "options": { "allowUntestedHost": true } }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>", "options": { "allowUntestedHost": true } }]
 }
 ```
 
@@ -25,26 +25,27 @@ To set options, use the object form:
 
 How much the default rules restrict. `all` allows every Jira tool; `ask-changes` allows a read and asks for every other
 tool; `read-only` allows a read and denies every other tool, which also hides it from the model. The classes come from
-`src/jira-tools.ts`, so the value decides a tool Atlassian adds later too. [Permissions](#permissions) has the three
-generated blocks.
+`src/jira-tools.ts`, so the value decides a tool Atlassian adds later too. `/jira-status` prints the generated
+block, under `Agents without default rules`, when an agent lacks it; [Permissions](#permissions) has the recipes and
+the agents that miss it.
 
 ### `allowUntestedHost`
 
 - Type: `true` or `false`.
 - Default: `false`.
 
-The plugin supports OpenCode `>=2.2.3 <2.4.0`, the range `opencode.host` in `package.json` declares, and every check
-runs on 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2, the tested releases. Status shows the version, whether it is tested and the supported
-range in its `OpenCode` row, for example `2.2.5 (tested; supported range >=2.2.3 <2.4.0)`.
+The plugin supports OpenCode `>=2.4.1 <2.5.0`, the range `opencode.host` in `package.json` declares, and every check
+runs on 2.4.1, the tested release. Status shows the version, whether it is tested and the supported
+range in its `OpenCode` row, for example `2.4.1 (tested; supported range >=2.4.1 <2.5.0)`.
 
 - **A tested release:** the plugin starts.
-- **Another release inside the range, such as 2.2.99:** the plugin starts too. Status marks the version `untested`, and
+- **Another release inside the range, such as 2.4.9:** the plugin starts too. Status marks the version `untested`, and
   the status RPC's `host.tested` is `false`. The next step is the same as on a tested release.
-- **Outside the range, including 2.4.0, prereleases and development builds:** the plugin refuses to start, and
+- **Outside the range, including 2.5.0, prereleases and development builds:** the plugin refuses to start, and
   `/plugins` shows:
 
   ```text
-  HOST_UNTESTED: This plugin supports OpenCode >=2.2.3 <2.4.0, found 2.4.0. Next step: Use OpenCode >=2.2.3 <2.4.0, or set the plugin option "allowUntestedHost": true to run anyway.
+  HOST_UNTESTED: This plugin supports OpenCode >=2.4.1 <2.5.0, found 2.5.0. Next step: Use OpenCode >=2.4.1 <2.5.0, or set the plugin option "allowUntestedHost": true to run anyway.
   ```
 
 - **Outside the range with `"allowUntestedHost": true`:** it starts anyway, and `/jira-status` and `/jira` show a
@@ -140,9 +141,8 @@ The plugin compares origin, path and query: a plain `/v2/mcp`, a v1 URL, another
 
 OpenCode asserts every MCP call itself, with the action `jira_<tool>` and the resource `*`. The plugin adds its
 block to every agent that starts with the base rule `{ "action": "*", "resource": "*", "effect": "allow" }`, directly
-after that rule. The README prints the whole block, rule for rule, in
-[Permissions](https://github.com/joe-broadhead/opencode-jira/blob/HEAD/README.md#permissions); `/jira-status` prints
-it too, and its `Agents without default rules` row prints it as a list to paste.
+after that rule. `/jira-status` prints the whole block, rule for rule, under `Agents without default rules`, and only
+when an agent lacks it.
 
 `READ_TOOLS` in `src/jira-tools.ts` lists Jira's read tools, `EXPORT_TOOLS` the one that mints a signed URL,
 `WRITE_TOOLS` its write tools, and `DESTRUCTIVE_TOOLS` the seven that `access: "read-only"` denies and
@@ -179,8 +179,8 @@ There are three ways to restrict the block, and everything later still wins:
 | `read-only` | a read runs; every other tool is denied, and hidden from the model |
 
 The value generates the block from the tool table's classes, so `/jira` and `/jira-status` always show what is in
-force; the README prints the three blocks in full. A namespace rule (`jira_*`) comes first, and each known tool's own
-rule after it, so a tool Atlassian adds later takes the value's own effect.
+force. A namespace rule (`jira_*`) comes first, and each known tool's own rule after it, so a tool Atlassian adds later
+takes the value's own effect.
 
 ### Recipes
 
@@ -284,7 +284,7 @@ Every error from the plugin reads `CODE: What happened. Next step: What to do.`
 | Code | When | Next step |
 | --- | --- | --- |
 | `OPTIONS_INVALID` | Setup: an option is unknown or has a wrong value. `/plugins` shows the message, which names the option and the accepted values. | Fix the plugin options in `opencode.json`. |
-| `HOST_UNTESTED` | Setup: OpenCode is outside `>=2.2.3 <2.4.0`, and `allowUntestedHost` is not set. | Use OpenCode `>=2.2.3 <2.4.0`, or set `"allowUntestedHost": true`. |
+| `HOST_UNTESTED` | Setup: OpenCode is outside `>=2.4.1 <2.5.0`, and `allowUntestedHost` is not set. | Use OpenCode `>=2.4.1 <2.5.0`, or set `"allowUntestedHost": true`. |
 | `STATUS_UNAVAILABLE` | `/jira-status`, `/jira` or the status RPC: the status could not be read, or the plugin is not running on the server. The RPC answers with its error `unavailable`. | The message's own next step: restart OpenCode and run the command again, or, when the plugin is not running, run `/plugins` to see why. |
 | `SKILLS_INVALID` | Setup: a skill file is missing or broken. The plugin still starts; status shows the problem. | Reinstall the plugin. |
 | `SERVER_NOT_REGISTERED` | Setup: the `jira` server could not be registered. Status shows the problem. | Restart OpenCode. |
@@ -293,7 +293,7 @@ Every error from the plugin reads `CODE: What happened. Next step: What to do.`
 For example:
 
 ```text
-OPTIONS_INVALID: Unknown option "apiKey". Accepted options: "allowUntestedHost", "access". Next step: Fix the plugin options in opencode.json, for example "plugins": [{ "package": "github:joe-broadhead/opencode-jira#v0.0.7", "options": { "access": "ask-changes" } }].
+OPTIONS_INVALID: Unknown option "apiKey". Accepted options: "allowUntestedHost", "access". Next step: Fix the plugin options in opencode.json, for example "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>", "options": { "access": "ask-changes" } }].
 ```
 
 Errors from Atlassian's server and from OpenCode pass through unchanged, including `invalid_token`, a refusal for a scope
@@ -314,16 +314,16 @@ token, no header and no URL query, and makes no Atlassian call. `version`, `host
 | `state` | `connected`, `sign_in_required`, `connecting`, `disabled`, `failed`, `not_configured` or `conflict`. The `Connection` row shows the same states as `connected`, `sign-in required`, `connecting`, `disabled`, `failed`, `not configured` and `conflict`. |
 | `error` | For a failed connection only: OpenCode's reason, on one line of at most 160 characters, with any URL cut before its query. The text for a needed sign-in can hold an authorization URL, so it is never shown. |
 | `source` | `type` (`plugin`, `adopted` or `conflict`), `url`, `signIn` (`oauth`, or `own` for your own entry with `"oauth": false`), `scope` for an adopted entry (`pinned`, `missing`, `wider`, `narrower` or `token`), and for a conflict the `expected` URL |
-| `account` | The display name from your last `atlassianUserInfo` result, on one line of at most 80 characters; absent before one. Never an email address or an account id. |
-| `sites` | The site names from your last `getAccessibleAtlassianResources` result, at most ten, in its order; empty before one. Never a cloud id, a URL or an app. |
+| `account` | The display name a read through the tools RPC, or a probe, recorded from `atlassianUserInfo`, on one line of at most 80 characters; absent before one. Never an email address or an account id. |
+| `sites` | The site names a read through the tools RPC recorded from `getAccessibleAtlassianResources`, at most ten, in its order; empty before one. Never a cloud id, a URL or an app. |
 | `tools` | How many Jira tools OpenCode lists that the plugin knows; a tool Atlassian adds is counted under `unknownCount`. |
-| `destructiveTools` | The listed tools of the destructive class, such as `editJiraEntityProperty`. What happens to them follows `access`. `deniedTools` carries the same list under its old name. |
+| `destructiveTools` | The listed tools of the destructive class, such as `editJiraEntityProperty`. What happens to them follows `access`. |
 | `notGranted` | The three known reads this plugin's scope does not grant, so Atlassian never lists them. Empty for your own entry, whose scope is its own. |
 | `listing` | True while a server that connected moments ago lists no tools yet. The next step is then to run `/jira-status` again in a few seconds, not to ask an admin. |
 | `unknownCount`, `unknownTools` | How many of them the plugin does not know, and at most 20 of their names, only those made of lowercase letters, digits and `_` |
 | `unguardedAgents` | Agents where a new Jira tool would run unrestricted under `ask-changes` or `read-only`; always empty under `all`, where the block restates the base allow. An agent whose own rules already ask or deny for every Jira tool is not listed. |
 | `shadowedSkills` | Present only when a skill with one of the plugin's ids, such as your own `jira` skill, replaces the plugin's: each `id` and the `path` OpenCode loads instead |
-| `host` | `version` (`null` if OpenCode reports none), `range` (the supported range) and `tested` (true only for 2.2.3, 2.2.4, 2.2.5, 2.2.6, 2.2.7, 2.3.0, 2.3.1 and 2.3.2) |
+| `host` | `version` (`null` if OpenCode reports none), `range` (the supported range) and `tested` (true only for 2.4.1) |
 | `problems` | Setup problems, each `CODE: What happened. Next step: What to do.` |
 | `nextStep` | Exactly one next step: the `Next step` row, `Nothing to do.` when nothing is needed |
 

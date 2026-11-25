@@ -8,8 +8,9 @@ import { SKILL_NAMES } from "../../src/skills.js"
 import { ACCESS_CHOICES, type PluginSetting, settingChoices, settingsProblems, settingValueIssue } from "../support/jelly-settings.js"
 
 /**
- * The `jelly` section of package.json, which Jelly reads without loading the plugin. Jelly's agents have no base allow
- * rule, so this plugin's own rules never reach them: Jelly writes each declared "ask" or "deny" as that tool's default.
+ * The `jelly` section of package.json, which a consumer reads without loading the plugin. A consumer's agents have no
+ * base allow rule, so this plugin's own rules never reach them: the consumer writes each declared "ask" or "deny" as
+ * that tool's default.
  */
 
 type Tool = { name: string; permission: string; effect: "allow" | "ask" | "deny"; readOnly: boolean }
@@ -61,7 +62,7 @@ describe("the jelly declaration", () => {
     }
   })
 
-  test("uses only the keys Jelly reads: its contracts strip any other", () => {
+  test("uses only the keys the `jelly` contract reads: its contracts strip any other", () => {
     expect(Object.keys(jelly).sort()).toEqual(["contributes", "icon", "rpc", "signIns", "skills", "summary", "title", "tools", "views"])
   })
 
@@ -100,11 +101,11 @@ describe("the jelly settings declare their choices", () => {
     }
   }
 
-  test("Jelly's setting schema reads them", () => {
+  test("the `jelly` setting schema reads them", () => {
     expect(settingsProblems(settings)).toEqual([])
   })
 
-  test("access offers Jelly's three choices, word for word, and the options parser takes exactly those", () => {
+  test("access offers the `jelly` contract's three choices, word for word, and the options parser takes exactly those", () => {
     expect(access.choices).toEqual([...ACCESS_CHOICES])
     expect(settingChoices(access)?.map((choice) => choice.value)).toEqual([...ACCESS])
     for (const { value } of ACCESS_CHOICES) expect(accepts({ access: value })).toBe(true)

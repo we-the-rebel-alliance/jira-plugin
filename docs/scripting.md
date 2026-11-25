@@ -1,6 +1,6 @@
 # Scripting
 
-A script can call Jira's tools with no model: a cron job, a shell script, or any program that can reach the OpenCode
+A script can call Jira's tools with no model: an OpenCode automation, a shell script, or any program that can reach the OpenCode
 server. It uses the tools RPC, `jira.issues.tools`, through `opencode api` or an OpenCode client.
 
 Every tool the plugin knows is a method, named after Atlassian's tool, without the `jira_` prefix. Each method carries
@@ -35,20 +35,20 @@ what a script writes where those people would expect it, and only as long as you
 
 ## The jira.activity source
 
-`events_list` and `probe` are the source contract's two methods, for a collector such as Memory. `probe` reads
+`events_list` and `probe` are the source contract's two methods, for a collector: an app that binds this source and
+lists its events. `probe` reads
 `atlassianUserInfo` and answers `{ source, account, owner, trust }`; it also records who this sign-in is, which every
-listing names. A listing needs no probe before it: when the plugin does not know who is signed in yet (after a start of
+listing names, and the display name status shows. A listing needs no probe before it: when the plugin does not know who is signed in yet (after a start of
 OpenCode, or a new sign-in, since it keeps this in memory only), the listing makes the same `atlassianUserInfo` read
-itself, once, and keeps the answer, so a call that names another `account` is still `ACCOUNT_MISMATCH`. `events_list` takes `{ since?, cursor?, limit?, account?, source?, list? }` and answers a page of events, oldest
-first, with a `cursor` to pass next time and `more` while there is more now. With `list` `issues` it answers the
-`jira.issues` list snapshot instead, for an app that renders one, described below. It reads `getAccessibleAtlassianResources`
+itself, once, and keeps the answer, so a call that names another `account` is still `ACCOUNT_MISMATCH`. `events_list` takes `{ since?, cursor?, limit?, account?, source? }` and answers a page of events, oldest
+first, with a `cursor` to pass next time and `more` while there is more now. It reads `getAccessibleAtlassianResources`
 once and searches each Jira site with `searchJiraIssuesUsingJql`, so an allow rule for those two tools, and for
 `atlassianUserInfo`, is part of a script's grant. Its refusals use the contract's codes:
 
 | Code | When |
 | --- | --- |
 | `INPUT_INVALID` | The input has an unknown key, a bad `since`, or a `limit` outside 1 to 500. |
-| `SOURCE_UNKNOWN` | `source`, or a `list`, is not one this plugin has. |
+| `SOURCE_UNKNOWN` | `source` is not one this plugin has. |
 | `ACCOUNT_MISMATCH` | The `account` is not the signed-in one, or the cursor is another account's. |
 | `CURSOR_INVALID` | The cursor was not issued by this source for this account: start again with `since`. |
 | `NEEDS_SIGN_IN` | The `jira` server needs a sign-in. |
@@ -60,21 +60,6 @@ a page of up to 100 work items: more for a larger `limit` or to walk past a burs
 of minutes, and at most 100 per site. A burst larger than that is passed with `gap: { reason: "window-truncated",
 since }`, which says events from `since` may be missing; the next page carries none. Several updates to one work item
 between two listings are one event, for the latest.
-
-## The jira.issues list
-
-The tools RPC method `events_list`, called with `{ "source": "jira", "list": "issues" }`, answers `jira.issues`, the
-contract's `list` output: the work items assigned to the signed-in person, at most 50, newest first, once each, read as
-`assignee = currentUser() ORDER BY updated DESC` on every site the sign-in reaches, capped at eight sites as the activity
-feed is. Each item is the key and summary as `text`, the status name as `note`, and `done` when the status category is
-Done; its id names the site as well as the key, because two sites can both hold `EX-1`. A summary that holds a secret is
-screened whole and left out before any of it is cut. The answer stays inside the source's 64 KB; if 50 items could not
-fit, whole items would be dropped from its end and it would say `shortened: true`.
-
-**It is not a model tool.** `jira_events_list`, the tool a model sees, takes no `list` and never answers a list: the
-method declares `list` in its input and both answers in its output, and the tool declares neither. It asserts
-`jira_events_list` and reads the same two Atlassian tools as the activity feed, and, like a listing, it reads who is
-signed in itself when the plugin does not know yet, so it needs no probe first.
 
 ## A script runs as a session
 
@@ -114,8 +99,8 @@ the agent's rules, with the shape of the two reads above and the write's own act
 when you mean that script to make that change unattended. `describe` with the session reports the resolved permission
 of every method, so a script can check before it calls.
 
-For a one-off script with an approval bound to it, use Jobs' `jobs_run_script`: the approval covers exactly that
-source and that list of methods, and Jobs writes the run session's rules for you.
+For a one-off script with an approval bound to it, write the session's rules into the session you create: they cover
+exactly the methods you list.
 
 ## Calling a method
 
@@ -161,7 +146,7 @@ there. The HTTP equivalents are the `location[directory]` query parameter and th
 `location` that answered and a `locationHint`.
 
 A location unloads after OpenCode's idle timeout. If a scheduled script gets `rpc.unavailable` from a location that was
-loaded before, send the call again once: the request loads the location. Jobs keeps its own location loaded.
+loaded before, send the call again once: the request loads the location.
 
 ## Rate limits and cost
 
@@ -205,12 +190,12 @@ and `rpc.invalid_input` for a body that is not the envelope above, with one mess
 ## What scripts cannot do
 
 - Run a method whose action resolves to `ask` or `deny`: no one can answer a prompt, and a deny needs its rule changed.
-- Rely on a saved "Always allow" from the model path: a script needs an `allow` rule in config, or a Jobs one-off's
-  approval.
+- Rely on a saved "Always allow" from the model path: a script needs an `allow` rule in the session's or the agent's
+  rules.
 - Call a tool that is not in the plugin's table, even with an allow rule. It is reported as `unclassified`.
 - Read a workflow or a screen: the pinned scope does not grant those three reads, so Atlassian lists no such tool.
 - Use a token or a key: the plugin has none to give.
 
 A script's calls write nothing to the session, and OpenCode's `execute.before` and `execute.after` tool hooks, from any
-plugin, do not run for them. The plugin applies the same result shaping it applies on the model path: a script's account
-read fills the account name and site names for status, as the model's call does.
+plugin, do not run for them. A script's account read through the tools RPC fills the account name and site names for
+status; the model's own calls do not.

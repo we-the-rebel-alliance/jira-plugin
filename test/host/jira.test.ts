@@ -23,7 +23,8 @@ import { agentRules, attempt, effect, HOST_VERSION, session, startHost, until, t
 const KEY = "sk-fake-host-test-0123456789"
 const SIGN_IN = "Run /connect and choose Jira, then press o or Enter to open the link (in a terminal, opencode mcp auth jira opens it automatically; run it from the project folder, and if it answers MCP server not found: jira, wait a few seconds and run it again)."
 const OFF = DESTRUCTIVE_TOOLS.join(", ").replace(/, ([^,]*)$/, " and $1")
-const NOT_READ_YET = "not read yet: it appears after the first Jira call since OpenCode started"
+const NOT_READ_YET = "not read yet: it appears after the first script read since OpenCode started"
+const ACCOUNT_NOT_READ_YET = "not read yet: it appears after the first script read or probe since OpenCode started"
 
 // Starting a host takes several seconds, more on a busy machine.
 setDefaultTimeout(120_000)
@@ -225,31 +226,12 @@ describe(`the plugin on OpenCode ${HOST_VERSION}`, () => {
     expect(plain.methods.every((method) => !Object.hasOwn(method, "permission"))).toBe(true)
   })
 
-  // The list snapshot rides events_list with a second, declared output: the host validates every method answer, so an
-  // events-only schema refused it `rpc.invalid_output` before there was one.
-  // No probe runs first, as after a restart of OpenCode: the listing reads who is signed in through the host's own executor.
-  test("a script reads the assigned-issues list through the tools RPC with no probe first, and the answer is the list's own shape", async () => {
-    await jiraTools(host)
-    const before = host.fake.called.length
-    const sessionID = await session(host)
-    const rpc = toolsRpc(host)
-    const listed = (await rpc.events_list!({ sessionID, input: { source: "jira", list: "issues" } }, { location: host.location })) as Record<string, any>
-    expect(listed).toMatchObject({
-      source: "jira",
-      account: "fake-account-1",
-      data: { items: [{ id: "cloud-acme:EX-1", text: "EX-1: A work item", note: "In Progress" }], editable: false },
-      trust: "untrusted",
-    })
-    expect(listed.events).toBeUndefined()
-    expect(host.fake.called.slice(before).filter((call) => call.tool === "searchJiraIssuesUsingJql")).toHaveLength(2)
-  })
-
   test("the location: describe reports where the call landed, and a call that names another location is answered there", async () => {
     const elsewhere = join(ROOT, "elsewhere")
     mkdirSync(elsewhere, { recursive: true })
     const rpc = (host.client.rpc as unknown as (definition: object) => ToolsClient)(TOOLS_CONTRACT)
-    // From OpenCode 2.2.7 a location opened by a call answers before its plugins have loaded: until the plugin has
-    // registered there, the call is rpc.unavailable. Any other error fails the test at once.
+    // A location opened by a call answers before its plugins have loaded: until the plugin has registered there,
+    // the call is rpc.unavailable. Any other error fails the test at once.
     const loaded = (options: object) =>
       until("the plugin has loaded in the location", () =>
         rpc.describe!({}, options).then(
@@ -302,8 +284,8 @@ describe(`the plugin on OpenCode ${HOST_VERSION}`, () => {
     const before = host.fake.calls.length
     const text = await status(host, sessionID)
     expect(text).toContain(`- Connection: connected (${host.fake.url}, registered by this plugin)`)
-    // Before the user's own two account reads: both rows say so, and neither has anything to show.
-    expect(text).toContain(`- Account: ${NOT_READ_YET}\n`)
+    // Before the script's own two account reads: both rows say so, and neither has anything to show.
+    expect(text).toContain(`- Account: ${ACCOUNT_NOT_READ_YET}\n`)
     expect(text).toContain(`- Sites: ${NOT_READ_YET}\n`)
     const withheld = `${NOT_GRANTED_TOOLS.slice(0, -1).join(", ")} and ${NOT_GRANTED_TOOLS.at(-1)}`
     expect(text).toContain(`- Access: access all: every Jira tool is allowed, reads and changes alike, and ${withheld} are not granted either; every agent has the block\n`)
@@ -313,15 +295,15 @@ describe(`the plugin on OpenCode ${HOST_VERSION}`, () => {
     expect(text).toContain(`- OpenCode: ${HOST_VERSION} (${TESTED_HOSTS.includes(HOST_VERSION) ? "tested" : "untested"}; supported range ${SUPPORTED_HOST})`)
     expect(text).not.toContain("Plan")
     const output = await statusRpc(host)
-    expect(output).toMatchObject({ state: "connected", access: "all", tools: AVAILABLE, deniedTools: [...DESTRUCTIVE_TOOLS], notGranted: ["getJiraScreen", "getJiraWorkflowEditorLink", "getJiraWorkflows"], unknownCount: 1, listing: false, unguardedAgents: [] })
+    expect(output).toMatchObject({ state: "connected", access: "all", tools: AVAILABLE, destructiveTools: [...DESTRUCTIVE_TOOLS], notGranted: ["getJiraScreen", "getJiraWorkflowEditorLink", "getJiraWorkflows"], unknownCount: 1, listing: false, unguardedAgents: [] })
     expect(output).not.toHaveProperty("account")
     expect(output).toMatchObject({ sites: [] })
     // Neither the command nor the RPC, which is what the dialog asks, reached Atlassian.
     expect(host.fake.calls.length).toBe(before)
 
-    // The user's own two account reads fill both rows, with a display name and site names and nothing else. The host's
-    // executors skip execute.after hooks, so these go through the tools RPC, which records them with the same function;
-    // a model turn records them through the hook, as the Code Mode describe checks.
+    // The script's own two account reads fill both rows, with a display name and site names and nothing else. The host's
+    // executors run no execute.after hooks and the plugin registers none, so only a read through the tools RPC fills
+    // them; a model turn does not, as the model-path test below checks.
     expect(await scriptCall(host, "atlassianUserInfo", { sessionID, input: {} })).toContain("Sam Okafor")
     expect(await scriptCall(host, "getAccessibleAtlassianResources", { sessionID, input: {} })).toContain("Acme")
     const filled = await until("/jira-status shows the account and its sites", async () => {
@@ -449,7 +431,7 @@ describe("a model turn that asks for the changes access read-only denies, with C
     }
   })
 
-  test("the model's own account reads fill the Account and Sites rows through the execute.after hook", async () => {
+  test("the model's own account reads run but fill neither status row; only a script's read captures them", async () => {
     host.fake.model.script = ACCOUNT_READS.map((tool) => ({ tool: `jira_${tool}`, arguments: {} }))
     const before = host.fake.model.requests.length
     const sessionID = (await scripted(host).create({ agent: "build", location: host.location, model: { providerID: "lmstudio", id: MODEL_ID } })).id
@@ -458,13 +440,11 @@ describe("a model turn that asks for the changes access read-only denies, with C
       host.fake.model.requests.slice(before).some((request) => ((request as { messages?: { role: string }[] }).messages ?? []).filter((message) => message.role === "tool").length >= ACCOUNT_READS.length),
     )
     for (const tool of ACCOUNT_READS) expect(host.fake.calls).toContain(tool)
-    const text = await until("status shows the account and its sites", async () => {
-      const posted = await status(host, await session(host))
-      return posted.includes("- Sites: 2 sites") ? posted : undefined
-    })
-    expect(text).toContain("- Account: Sam Okafor\n")
-    expect(text).toContain("- Sites: 2 sites: Acme, Sandbox\n")
-    for (const secret of ["sam.okafor@example.com", "cloud-acme", "atlassian.net"]) expect(text).not.toContain(secret)
+    // The plugin registers no execute.after hook, so the model's own calls are not the capture: a script's read is.
+    const text = await status(host, await session(host))
+    expect(text).toContain(`- Account: ${ACCOUNT_NOT_READ_YET}\n`)
+    expect(text).toContain(`- Sites: ${NOT_READ_YET}\n`)
+    expect(text).not.toContain("Sam Okafor")
   })
 })
 

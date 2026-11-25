@@ -116,7 +116,7 @@ describe("the jira server", () => {
 type SetupContext = Pick<Plugin.Context, "app" | "options" | "mcp" | "agent" | "skill" | "command" | "session" | "tool" | "integration" | "rpc" | "permission" | "location" | "event">
 
 /** A context with only what setup touches. Each transform is collected so the test can replay it. */
-function context(options: unknown, version = "2.2.3") {
+function context(options: unknown, version = "2.4.1") {
   const mcp = transforms<McpEditor>()
   const agent = transforms<Parameters<Parameters<Plugin.Context["agent"]["transform"]>[0]>[0]>()
   const skill = transforms<Parameters<Parameters<Plugin.Context["skill"]["transform"]>[0]>[0]>()
@@ -144,7 +144,6 @@ function context(options: unknown, version = "2.2.3") {
     tool: {
       transform: tool.transform,
       list: async () => [{ id: "jira_searchJiraIssuesUsingJql", execute: async () => ({ content: [{ type: "text", text: "ok" }] }) }],
-      hook: async (name: string) => (hooks.push(`tool:${name}`), { dispose: async () => void hooks.splice(hooks.indexOf(`tool:${name}`), 1) }),
     },
     location: { directory: "/projects/jira-test" },
     permission: { hook: async (name: string) => (hooks.push(name), { dispose: async () => void hooks.splice(hooks.indexOf(name), 1) }) },
@@ -180,25 +179,25 @@ describe("setup", () => {
     tool.run({ namespace: (namespace: { name: string; description?: string }) => void namespaces.push(namespace), add: (info: { name: string }) => void tools.push(info) } as never)
     expect(namespaces).toEqual([{ name: "jira", description: NAMESPACE_DESCRIPTION }])
     expect(tools.map((info) => [info.name, info.options?.namespace])).toEqual([["events_list", "jira"]])
-    // The always-visible rules: read the skill, the all-allow default and the sentence before a change, who a change
-    // can email, the attachment link as a credential, untrusted text, and where the tools come from.
+    // The always-visible line: where the tools come from, the two skills, who a change can email, the one owner it leaves
+    // out, and untrusted text. The cut material lives in the skills.
     for (const words of [
-      "Read the jira skill before the first call",
-      "By default every Jira tool is allowed",
-      "say in your reply what it does and whom it reaches",
-      "Every change can email watchers and everyone mentioned",
-      "keep it in the chat only",
-      "untrusted text",
+      "Load the jira skill first",
+      "jira-write before any change",
+      "changes email watchers",
+      "Not for Confluence",
+      "untrusted data",
       "through Atlassian's MCP server",
     ]) {
       expect(NAMESPACE_DESCRIPTION).toContain(words)
     }
+    expect(NAMESPACE_DESCRIPTION.length).toBeLessThanOrEqual(400)
     expect(NAMESPACE_DESCRIPTION).not.toContain(ENDPOINT)
     expect(NAMESPACE_DESCRIPTION).not.toContain("http")
     expect(rpc).toEqual(["jira.issues", "jira.issues.tools"])
-    // The tools RPC's one evaluate hook, and the account read's hook: the account and site rows come from the user's own
-    // calls, never from a call the plugin makes.
-    expect(hooks.sort()).toEqual(["evaluate", "tool:execute.after"])
+    // The tools RPC's one evaluate hook. Nothing registers execute.before or execute.after: the tools RPC's account
+    // reads and a probe fill the account rows.
+    expect(hooks.sort()).toEqual(["evaluate"])
     expect(typeof cleanup).toBe("function")
     await cleanup!()
     expect(rpc).toEqual(["jira.issues"])
@@ -249,7 +248,7 @@ describe("setup", () => {
   })
 
   test("a host outside the range runs with the override, and an untested release inside the range runs without it", async () => {
-    for (const [options, version] of [[{ allowUntestedHost: true }, "2.4.0"], [{}, "2.2.99"]] as const) {
+    for (const [options, version] of [[{ allowUntestedHost: true }, "2.5.0"], [{}, "2.4.9"]] as const) {
       const { ctx, mcp } = context(options, version)
       const cleanup = await createJiraPlugin(seam).setup(ctx)
       expect(mcp.callbacks).toHaveLength(1)

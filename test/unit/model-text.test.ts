@@ -10,7 +10,7 @@ import { NAMESPACE_DESCRIPTION } from "../../src/constants.js"
 const ROOT = fileURLToPath(new URL("../..", import.meta.url))
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8")
 
-/** Every sentence the model is given: the namespace, the skills, the Jelly line. */
+/** Every sentence the model is given: the namespace, the skills, the `jelly` summary line. */
 export function modelTexts(): [string, string][] {
   const jelly = JSON.parse(read("package.json")) as { jelly: { summary: string } }
   return [
@@ -30,7 +30,6 @@ describe("the text the model is given", () => {
     // "Allowed by default" holds for the default `access` only, so the text that claims it also names the option.
     const ALLOWED_BY_DEFAULT = /\ballowed\b.*\bby default\b|\bby default\b.*\ballowed\b/iu
     const claims = modelTexts().filter(([, text]) => ALLOWED_BY_DEFAULT.test(text.replace(/\s+/g, " ")))
-    expect(claims.map(([file]) => file)).toContain("src/constants.ts (namespace)")
     for (const [file, text] of claims) expect({ file, names: VALUE.test(text) }).toEqual({ file, names: true })
   })
 

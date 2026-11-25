@@ -3,7 +3,7 @@ import { reasonOf } from "./redact.js"
 import { errorText, NAMESPACE_DESCRIPTION, OAUTH_SCOPE, PLUGIN_ID, SERVER_NAME } from "./constants.js"
 import { checkHost } from "./host-version.js"
 import { registerToolsRpc } from "@we-the-rebel-alliance/source-contract/tools-rpc"
-import { eventsMethod, probeMethod, registerEventsTool, signIns } from "./events.js"
+import { eventsMethod, probeMethod, registerEventsTool, signIns, type SignedIn } from "./events.js"
 import { watchIntegration } from "./integration.js"
 import { watchListing } from "./listing.js"
 import { watchAccount } from "./account.js"
@@ -158,8 +158,9 @@ export function createJiraPlugin(seam: JiraSeam) {
       await ctx.tool.transform((editor) => void (source?.type === "conflict" ? undefined : editor.namespace({ name: SERVER_NAME, description: NAMESPACE_DESCRIPTION })))
       await registerDefaultRules(ctx.agent, defaultRules(options.access), report("rules"))
       const listing = watchListing(ctx)
-      // The account and site rows come from the user's own first calls; the plugin never calls Atlassian itself.
-      // What probe read for each sign-in; forgotten with the account rows on a sign-out or another account.
+      // The account and site rows come from a script's tools RPC reads and from a probe; the plugin never calls
+      // Atlassian itself. What probe read for each sign-in; forgotten with the account rows on a sign-out or another
+      // account.
       const known = signIns()
       const account = await watchAccount(ctx, () => source?.type === "adopted" && source.signIn === "own", owned, () => known.clear())
       const own = skills.map((skill) => ({ id: skill.id, path: skill.path }))
@@ -175,7 +176,17 @@ export function createJiraPlugin(seam: JiraSeam) {
         const connection = server?.integrationID ? await ctx.integration.connection.active(server.integrationID) : undefined
         return connection?.type === "credential" ? connection.id : undefined
       }
-      const events = { tool: ctx.tool, mcp: ctx.mcp, permission: ctx.permission, owned, signIn, signIns: known }
+      const events = {
+        tool: ctx.tool,
+        mcp: ctx.mcp,
+        permission: ctx.permission,
+        owned,
+        signIn,
+        signIns: known,
+        identity: (signedIn: SignedIn) => {
+          if (signedIn.name) account.captureName(signedIn.name)
+        },
+      }
       await registerEventsTool(events)
       // Scripts call the known tools, events_list and probe with no model, as a session and its agent.
       const stopTools = await registerToolsRpc(ctx as never, {

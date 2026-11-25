@@ -38,22 +38,20 @@ afterEach(async () => {
 })
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
 
-async function watch() {
+async function watch(ownSignIn?: () => boolean, owned?: () => boolean) {
   const stream = events()
-  let after: ((event: unknown) => Promise<void> | void) | undefined
   const state = { server: "connected", forgotten: 0 }
   const account = await watchAccount(
     {
-      tool: { hook: async (_name: string, callback: (event: unknown) => void) => ((after = callback), { dispose: async () => void (after = undefined) }) },
       mcp: { list: async () => ({ data: [{ name: "jira", status: { status: state.server } }] }) },
       event: { subscribe: stream.subscribe },
     } as never,
-    undefined,
-    undefined,
+    ownSignIn,
+    owned,
     () => void state.forgotten++,
   )
   stops.push(account.stop)
-  return { account, state, stream, after: async (event: unknown) => await after?.(event) }
+  return { account, state, stream }
 }
 
 describe("nameOf", () => {
@@ -94,21 +92,6 @@ describe("sitesOf", () => {
 })
 
 describe("watchAccount", () => {
-  test("captures a completed model call of either account read, and only those", async () => {
-    const { account, after } = await watch()
-    await after({ tool: "jira_searchJiraIssuesUsingJql", status: "completed", result: { output: USER } })
-    expect(account.current()).toBeUndefined()
-    await after({ tool: "jira_atlassianUserInfo", status: "error", error: new Error("x") })
-    expect(account.current()).toBeUndefined()
-    await after({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: USER } })
-    expect(account.current()).toEqual({ name: "Sam Okafor" })
-    await after({ tool: "jira_getAccessibleAtlassianResources", status: "completed", result: { output: SITES } })
-    expect(account.current()).toEqual({ name: "Sam Okafor", sites: ["Acme", "Sandbox"] })
-    // A later result without the fields keeps what was read.
-    await after({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: "{}" } })
-    expect(account.current()?.name).toBe("Sam Okafor")
-  })
-
   test("a script's read through the tools RPC reaches every running instance", async () => {
     const first = await watch()
     const second = await watch()
@@ -117,10 +100,20 @@ describe("watchAccount", () => {
     expect([first.account.current(), second.account.current()]).toEqual([{ name: "Sam Okafor", sites: ["Acme", "Sandbox"] }, { name: "Sam Okafor", sites: ["Acme", "Sandbox"] }])
   })
 
+  test("records a probe's display name, cleaned and cut; an empty one keeps what was read", async () => {
+    const { account } = await watch()
+    account.captureName("  Sam\u0007 Okafor  ")
+    expect(account.current()).toEqual({ name: "Sam Okafor" })
+    account.captureName("x".repeat(200))
+    expect(account.current()?.name).toHaveLength(80)
+    account.captureName("   ")
+    expect(account.current()?.name).toHaveLength(80)
+  })
+
   test("forgets the account when the server needs a new sign-in or the account is switched", async () => {
-    const { account, after, state, stream } = await watch()
-    await after({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: USER } })
-    await tick()
+    const { account, state, stream } = await watch()
+    captureAccount("atlassianUserInfo", { output: USER })
+    expect(account.current()).toBeDefined()
     stream.emit("mcp.status.changed", { server: "other" })
     await tick()
     expect(account.current()).toBeDefined()
@@ -132,7 +125,7 @@ describe("watchAccount", () => {
     // Each time, the plugin also forgets who probe named for each sign-in.
     expect(state.forgotten).toBe(1)
     state.server = "connected"
-    await after({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: USER } })
+    captureAccount("atlassianUserInfo", { output: USER })
     expect(account.current()).toBeDefined()
     stream.emit("credential.switched")
     await tick()
@@ -142,8 +135,8 @@ describe("watchAccount", () => {
 
   // A new credential may be another person under the same credential id: what was read for the old one no longer holds.
   test("forgets the account, and who the sign-in is, when the credential is updated", async () => {
-    const { account, after, state, stream } = await watch()
-    await after({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: USER } })
+    const { account, state, stream } = await watch()
+    captureAccount("atlassianUserInfo", { output: USER })
     expect(account.current()).toBeDefined()
     stream.emit("credential.updated")
     await tick()
@@ -153,35 +146,19 @@ describe("watchAccount", () => {
 
   test("while any instance signs in with its own API-token entry, a script's read updates no status", async () => {
     const shared = await watch()
-    const stream = events()
-    const own = await watchAccount(
-      { tool: { hook: async () => ({ dispose: async () => {} }) }, mcp: { list: async () => ({ data: [] }) }, event: { subscribe: stream.subscribe } } as never,
-      () => true,
-    )
-    stops.push(own.stop)
+    const own = await watch(() => true)
     captureAccount("atlassianUserInfo", { output: USER })
-    expect([shared.account.current(), own.current()]).toEqual([undefined, undefined])
-    // The model path belongs to its own instance, so it still records the account there.
-    await shared.after({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: USER } })
-    expect(shared.account.current()?.name).toBe("Sam Okafor")
+    expect([shared.account.current(), own.account.current()]).toEqual([undefined, undefined])
+    // A probe belongs to its own instance, so it still records the account there.
+    own.account.captureName("Sam Okafor")
+    expect(own.account.current()).toEqual({ name: "Sam Okafor" })
+    expect(shared.account.current()).toBeUndefined()
   })
 
-  test("an instance whose jira server is at another URL records nothing, from the model or a script", async () => {
-    const stream = events()
-    let after: ((event: unknown) => Promise<void> | void) | undefined
-    const foreign = await watchAccount(
-      {
-        tool: { hook: async (_name: string, callback: (event: unknown) => void) => ((after = callback), { dispose: async () => {} }) },
-        mcp: { list: async () => ({ data: [{ name: "jira", status: { status: "connected" } }] }) },
-        event: { subscribe: stream.subscribe },
-      } as never,
-      () => false,
-      () => false,
-    )
-    stops.push(foreign.stop)
-    await after?.({ tool: "jira_atlassianUserInfo", status: "completed", result: { output: USER } })
+  test("an instance whose jira server is at another URL records nothing from a script", async () => {
+    const foreign = await watch(undefined, () => false)
     captureAccount("atlassianUserInfo", { output: USER })
-    expect(foreign.current()).toBeUndefined()
+    expect(foreign.account.current()).toBeUndefined()
   })
 
   test("stops capturing once stopped", async () => {

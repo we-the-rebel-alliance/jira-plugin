@@ -38,7 +38,7 @@ import { OAUTH_SCOPE } from "../../src/constants.js"
 export const ATLASSIAN_SCOPES = OAUTH_SCOPE
 
 /**
- * The scopes Atlassian's protected-resource metadata advertises, copied from RESEARCH §2.3. The 401 names none, so
+ * The scopes Atlassian's protected-resource metadata advertises, copied from Atlassian's published metadata. The 401 names none, so
  * OpenCode would fall back to this list, all 40 of them: the fake advertises the whole list too, so a test fails if the
  * plugin's pin is ever removed.
  */
@@ -139,12 +139,6 @@ export async function startFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
         calls.push(name)
         called.push({ tool: name, path })
         const args = message.params?.arguments ?? {}
-        // The list snapshot's one query: work items assigned to the signed-in person, newest first.
-        if (String(args.jql ?? "").startsWith("assignee = currentUser()")) {
-          // One work item on the first site, none on the second: both answer an issues list, as Atlassian does.
-          const issues = args.cloudId === "cloud-acme" ? [{ id: "10001", key: "EX-1", fields: { summary: "A work item", updated: "2026-11-12T09:00:00.000+0000", status: { name: "In Progress", statusCategory: { name: "In Progress" } } } }] : []
-          return reply({ content: [{ type: "text", text: "issues" }], structuredContent: { issues, isLast: true } })
-        }
         if (String(args.query ?? "").startsWith("fail")) return reply({ content: [{ type: "text", text: UPSTREAM_FAILURE }], isError: true })
         if (String(args.query ?? "").startsWith("text")) return reply({ content: [{ type: "text", text: `text from ${name}` }] })
         // The two account reads: a display name with an email beside it, and two sites with cloud ids and URLs, so a test

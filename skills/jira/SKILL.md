@@ -1,9 +1,9 @@
 ---
 name: jira
-description: Load before the first Jira tool call (jira_*, tools.jira.*). For the user's Jira work items (tickets, issues, epics), a key such as PROJ-42 or an atlassian.net link, JQL search, comments, logged time, boards, sprints, the backlog, story points, versions, filters and dashboards, and Jira sign-in or site selection. Not for Linear issues, GitHub issues, or meetings and transcripts. Confluence pages are outside this Jira-only plugin and it requests no Confluence access, so say that once rather than searching another app for them.
+description: "The user's Jira work items, keys such as PROJ-42 or atlassian.net links, JQL, comments, logged time, boards, sprints, backlog, versions and filters, and Jira sign-in. Not for Linear or GitHub issues. No Confluence access: say so once."
 ---
 
-If Jira's tools are absent, run `/connect` and choose Jira, or on Jelly call jelly_connection_request. Your organisation must allow Atlassian MCP.
+If Jira's tools are absent, run `/connect` and choose Jira. Your organisation must allow Atlassian MCP.
 
 # Jira
 
@@ -91,8 +91,8 @@ and **Write** for any change. A change tool you expected but cannot see is that 
 
 ## Scripts
 
-A cron job or shell script can run the same reads with no model through the tools RPC `jira.issues.tools`; writes are
-never available there. It runs as a session's agent, under its rules: use a session created for it
+An OpenCode automation or a shell script can run the same tools with no model through the tools RPC `jira.issues.tools`; a change
+runs only when the rules allow it, and the default `access: "all"` allows every method. It runs as a session's agent, under its rules: use a session created for it
 (`opencode api post /api/session -d '{"title":"…","agent":"build","location":{"directory":"/path/to/project"}}'`, keep `data.id`), never borrow one found through
 history or a list. Every call needs the `cloudId` from `getAccessibleAtlassianResources`, and calls go one at a time.
-Details: https://raw.githubusercontent.com/joe-broadhead/opencode-jira/HEAD/docs/scripting.md
+Details: https://raw.githubusercontent.com/we-the-rebel-alliance/jira-plugin/master/docs/scripting.md

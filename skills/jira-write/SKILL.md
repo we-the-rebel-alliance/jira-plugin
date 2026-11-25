@@ -1,8 +1,8 @@
 ---
 name: jira-write
-description: Load before any Jira change - creating or editing a work item, transitioning status, commenting, logging time, linking items, converting a work item to a sub-task, attaching a file, watching, moving a sprint or releasing a version, or creating a board - and before explaining why a delete or a project setting is unavailable.
+description: "Before any Jira change: create or edit a work item, transition, comment, log time, link, attach, watch, move a sprint, release a version or create a board, and before explaining why a delete is unavailable."
 ---
-If Jira's tools are absent, run `/connect` and choose Jira, or on Jelly call jelly_connection_request. Your organisation must allow Atlassian MCP.
+If Jira's tools are absent, run `/connect` and choose Jira. Your organisation must allow Atlassian MCP.
 # Changes in Jira
 
 Tools are `jira_<tool>`, or `tools.jira.<tool>` in Code Mode; each call's signature gives its inputs, and every call
