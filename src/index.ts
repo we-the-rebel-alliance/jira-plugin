@@ -1,4 +1,3 @@
-import { ENDPOINT } from "./constants.js"
-import { createJiraPlugin } from "./plugin.js"
+import { createJiraPlugin } from "./plugin.ts"
 
-export default createJiraPlugin({ endpoint: ENDPOINT })
+export default createJiraPlugin()
