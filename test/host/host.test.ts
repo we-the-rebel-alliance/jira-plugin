@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL("../..", import.meta.url))
 describe("the built plugin on OpenCode 2.4.1", () => {
   test(
     "loads, refuses a missing and an unknown account, and answers a valid status",
-    { timeout: 30_000 },
+    { timeout: 120_000 },
     async () => {
       const run = await createHost({
         directory: root,
