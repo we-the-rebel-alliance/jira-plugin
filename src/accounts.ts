@@ -126,15 +126,25 @@ export function signalOf(state: ServerInfo["status"] | undefined): { readonly st
   return { state: "error", reason: "the MCP server is still connecting" }
 }
 
-/** Every alias's signal for status: its server's state, its conflict, and the owner a probe last read. */
+/**
+ * Every alias's signal for status: its server's state, its conflict, and the owner a probe last read. An MCP server list
+ * the host will not answer is unknown, never "no server yet": every alias is an error, with the reason as a problem.
+ */
 export async function accountSignals(
   ctx: Pick<Plugin.Context["mcp"], "list">,
   aliases: readonly string[],
   names: ReadonlyMap<string, string>,
   servers: ReadonlyMap<string, ServerEntry>,
   owners: { get(alias: string): { readonly id: string; readonly label: string } | undefined },
-): Promise<Record<string, AccountSignal>> {
-  const list = await ctx.list().catch(() => undefined)
+): Promise<{ readonly signals: Record<string, AccountSignal>; readonly problem?: string }> {
+  let list: Awaited<ReturnType<typeof ctx.list>> | undefined
+  try {
+    list = await ctx.list()
+  } catch (error) {
+    const signals: Record<string, AccountSignal> = {}
+    for (const alias of aliases) signals[alias] = { state: "error", reason: "the MCP server list could not be read" }
+    return { signals, problem: `the MCP server list could not be read: ${safeReason(error)}` }
+  }
   const signals: Record<string, AccountSignal> = {}
   for (const alias of aliases) {
     const name = names.get(alias) ?? alias
@@ -143,5 +153,5 @@ export async function accountSignals(
     const owner = owners.get(alias)
     signals[alias] = { ...state, ...(owner === undefined ? {} : { owner }) }
   }
-  return signals
+  return { signals }
 }

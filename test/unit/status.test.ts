@@ -2,6 +2,7 @@ import type { Plugin } from "@opencode/plugin"
 import { describe, expect, test, vi } from "vitest"
 import type { StatusAnswer } from "@we-the-rebel-alliance/plugin-contract/accounts"
 import { agentsFromHost, formatStatus } from "../../src/command.ts"
+import { createHandlers } from "../../src/handlers/index.ts"
 import { watchAccountStatus } from "../../src/watch.ts"
 import { FakeJira } from "../support/fake-jira.ts"
 import { handlerDeps, methodCall } from "../support/deps.ts"
@@ -41,6 +42,22 @@ describe("the status answer", () => {
     const answer = (await handlers.status.run({}, methodCall("work"))) as StatusAnswer
     expect(answer.state).toBe("error")
     expect(answer.nextStep).toContain("another address")
+  })
+
+  test("an unreadable MCP server list is an error, not a sign-in guess", async () => {
+    const { deps } = handlerDeps()
+    const handlers = createHandlers({
+      ...deps,
+      mcp: {
+        list: async () => {
+          throw new Error("the host would not list MCP servers")
+        },
+      } as never,
+    })
+    const answer = (await handlers.status.run({}, methodCall("work"))) as StatusAnswer
+    expect(answer.state).toBe("error")
+    expect(answer.accounts.map((account) => account.state)).toEqual(["error", "error"])
+    expect(answer.nextStep).toContain("MCP server list could not be read")
   })
 
   test("an unreadable agent list is unknown, never zero", async () => {

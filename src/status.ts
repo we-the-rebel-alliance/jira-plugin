@@ -10,8 +10,8 @@ import { safeReason } from "./redact.ts"
  * failed agent list to `problems` and writes an empty list. Nothing here calls the provider for content.
  */
 export async function buildStatus(deps: HandlerDeps, unguardedAgents: UnguardedAgentsResult): Promise<StatusAnswer> {
-  const signals = await accountSignals(deps.mcp, deps.aliases, deps.names, deps.servers, deps.owners)
-  const problems = deps.problems().map((problem) => safeReason(problem, 200))
+  const { signals, problem } = await accountSignals(deps.mcp, deps.aliases, deps.names, deps.servers, deps.owners)
+  const problems = [...deps.problems(), ...(problem === undefined ? [] : [problem])].map((entry) => safeReason(entry, 200))
   return statusAnswer({
     manifest: deps.manifest,
     version: deps.version,
