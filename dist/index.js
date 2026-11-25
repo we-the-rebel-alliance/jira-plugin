@@ -12754,6 +12754,61 @@ var manifest = pkg.capabilities;
 var version2 = pkg.version;
 var packageName = pkg.name;
 
+// src/skills.ts
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Skill } from "@opencode/plugin";
+var SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
+var SKILL_NAMES = ["jira", "jira-write"];
+function notLoaded(name, why) {
+  const reason = why.replace(/[.\s]+$/, "");
+  return `UNAVAILABLE: The "${name}" skill was not loaded: ${reason}. Next step: Reinstall the plugin.`;
+}
+function parseSkill(name, path, text3) {
+  const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text3.replace(/\r\n/g, "\n"));
+  const where = `skills/${name}/SKILL.md`;
+  if (match === null) throw new Error(`${where} has no frontmatter`);
+  const fields = /* @__PURE__ */ new Map();
+  for (const line of (match[1] ?? "").split("\n")) {
+    const at = line.indexOf(":");
+    if (at <= 0) continue;
+    fields.set(line.slice(0, at).trim(), line.slice(at + 1).trim().replace(/^(["'])(.*)\1$/, "$2"));
+  }
+  if (fields.get("name") !== name) throw new Error(`${where} must be named "${name}" in its frontmatter`);
+  const description = fields.get("description");
+  if (description === void 0 || description === "") throw new Error(`${where} has no description`);
+  const content = (match[2] ?? "").trim();
+  if (content === "") throw new Error(`${where} has no body`);
+  return {
+    id: Skill.ID.make(name),
+    name: Skill.Name.make(name),
+    description,
+    path: Skill.Info.fields.path.make(path),
+    content
+  };
+}
+async function loadSkills(directory = SKILLS_DIR) {
+  const skills = [];
+  const problems = [];
+  for (const name of SKILL_NAMES) {
+    const path = join(directory, name, "SKILL.md");
+    try {
+      skills.push(parseSkill(name, path, await readFile(path, "utf8")));
+    } catch (error2) {
+      const code = error2.code;
+      const why = code === "ENOENT" ? `skills/${name}/SKILL.md is missing` : error2 instanceof Error ? error2.message : `skills/${name}/SKILL.md cannot be read (${safeReason(error2)})`;
+      problems.push(notLoaded(name, why));
+    }
+  }
+  return { skills, problems };
+}
+function registerSkills(skill, skills) {
+  return skill.transform((editor) => {
+    for (const info of skills) editor.add(info);
+  });
+}
+
 // src/owners.ts
 var OwnerCache = class {
   owners = /* @__PURE__ */ new Map();
@@ -12834,7 +12889,8 @@ function createJiraPlugin(seam = {}) {
       await classifyServers(ctx, names, found);
       const servers = found;
       const accounts = await registerJiraAccounts(ctx, { manifest, options, servers });
-      const problems = [...accounts.problems, ...conflictProblems(names, servers)];
+      const { skills, problems: skillProblems } = await loadSkills();
+      const problems = [...accounts.problems, ...conflictProblems(names, servers), ...skillProblems];
       const deps = {
         manifest,
         version: version2,
@@ -12852,6 +12908,7 @@ function createJiraPlugin(seam = {}) {
       };
       const handlers = createHandlers(deps);
       const registration = await register(ctx, manifest, handlers);
+      const skillsRegistration = await registerSkills(ctx.skill, skills);
       const watcher = watchAccountStatus(ctx, (event, data) => registration.bus.emit(event, data), { aliases, names });
       const level = accessLevel(options);
       const rules = level.ok ? rulesFor(manifest, level.value, aliases) : [];
@@ -12859,6 +12916,7 @@ function createJiraPlugin(seam = {}) {
       return async () => {
         await watcher.stop();
         await command.dispose();
+        await skillsRegistration.dispose();
         await registration.dispose();
       };
     }

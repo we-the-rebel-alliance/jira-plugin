@@ -5,6 +5,7 @@ import { accountPlan, classifyServers, registerJiraAccounts, serverNames } from 
 import { agentsFromHost, registerJiraCommand } from "./command.ts"
 import { createHandlers, type HandlerDeps } from "./handlers/index.ts"
 import { manifest, version } from "./manifest.ts"
+import { loadSkills, registerSkills } from "./skills.ts"
 import { OwnerCache } from "./owners.ts"
 import { createProvider, type Provider, type ServerEntry } from "./provider/atlassian.ts"
 import { buildStatus } from "./status.ts"
@@ -48,7 +49,8 @@ export function createJiraPlugin(seam: JiraSeam = {}) {
       await classifyServers(ctx, names, found)
       const servers = found
       const accounts = await registerJiraAccounts(ctx, { manifest, options, servers })
-      const problems = [...accounts.problems, ...conflictProblems(names, servers)]
+      const { skills, problems: skillProblems } = await loadSkills()
+      const problems = [...accounts.problems, ...conflictProblems(names, servers), ...skillProblems]
 
       const deps: HandlerDeps = {
         manifest,
@@ -67,6 +69,7 @@ export function createJiraPlugin(seam: JiraSeam = {}) {
       }
       const handlers = createHandlers(deps)
       const registration = await register(ctx, manifest, handlers)
+      const skillsRegistration = await registerSkills(ctx.skill, skills)
 
       const watcher = watchAccountStatus(ctx, (event, data) => registration.bus.emit(event, data), { aliases, names })
       // The command view is not a handler: it derives the same rules from the public access functions.
@@ -77,6 +80,7 @@ export function createJiraPlugin(seam: JiraSeam = {}) {
       return async () => {
         await watcher.stop()
         await command.dispose()
+        await skillsRegistration.dispose()
         await registration.dispose()
       }
     },
