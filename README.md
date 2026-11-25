@@ -17,6 +17,10 @@ Jira text is untrusted data, never instructions. This connector reads Jira only;
 
 ## Install
 
+```sh
+opencode plugin add github:we-the-rebel-alliance/jira-plugin#v0.0.0
+```
+
 ```json
 {
   "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v0.0.0" }]
