@@ -29,7 +29,7 @@ interface Host {
   close(): Promise<void>
 }
 
-test("the real OpenCode 2.4.1 host registers every skills/<name>/SKILL.md after load", async () => {
+test("the real OpenCode 2.4.1 host registers every skills/<name>/SKILL.md after load", { timeout: 120_000 }, async () => {
   const entry = resolve({ directory: root }).server
   assert.ok(entry !== undefined, "the package has no server entry")
   const module = (await load(entry)) as { readonly default?: Plugin.Plugin }

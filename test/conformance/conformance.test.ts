@@ -38,7 +38,7 @@ async function computed() {
       "Recorded from the plugin's own handlers over a fake Atlassian MCP boundary: two mcp accounts (work and personal), one events source, probes for both, and the status answer. Case labels use `case`, and actors carry role and id only, so `plugin-kit record --check` reads no personal field. Every person, site, issue and key is invented.",
     plugin: PACKAGE,
     accounts: {
-      real: true,
+      real: false,
       aliases: deps.aliases,
       required: { method: "events_list", code: refusedCode(required) },
       unknown: { method: "events_list", account: "nobodyhere", code: refusedCode(unknown) },

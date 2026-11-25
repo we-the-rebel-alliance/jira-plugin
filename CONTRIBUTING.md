@@ -56,5 +56,5 @@ committing: a changed page shape or status answer is a behaviour change.
 
 ## Releases
 
-The maintainers cut releases with `plugin-kit release` on `master`; the tag workflow publishes the GitHub release with
-the bundle, `SHA256SUMS` and the conformance report. Do not publish from a branch.
+The maintainers cut releases with `plugin-kit release` on `master`; the tag workflow publishes the npm package tarball
+(`*.tgz`), `conformance.json` and `SHA256SUMS` with the pinned hashes. Do not publish from a branch.

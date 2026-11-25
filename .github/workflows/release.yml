@@ -1,4 +1,9 @@
-name: release
+name: Release
+
+# A tag v<package.json version> on a master commit whose CI passed creates the GitHub Release. Releases are not
+# published to npm: a consumer pins the tag, github:we-the-rebel-alliance/<name>-plugin#v<version>, and the committed
+# dist/ is what that tag installs, with no build. Only the owner decides a release; an agent never pushes a tag on its
+# own.
 
 on:
   push:
@@ -13,12 +18,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: build
+  release:
+    name: release
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,49 +33,28 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - name: Fetch the contract over HTTPS
-        # The contract is a public repository, and npm records its GitHub dependency over ssh. A runner has no key.
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - run: npm ci --ignore-scripts
       - run: npm run check
-      - name: Conformance report
-        run: npx plugin-kit conformance --json > conformance-report.json
-      - name: Collect the release files
+      - name: The tag names this package's version
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          mkdir -p release/dist
-          cp dist/index.js release/dist/index.js
-          cp conformance-report.json release/conformance-report.json
-          sha256sum release/dist/index.js release/conformance-report.json > release/SHA256SUMS
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-files
-          path: release
-          if-no-files-found: error
-
-  publish:
-    name: publish
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-files
-          path: release
-      - name: Publish
+          version="$(node -p "require('./package.json').version")"
+          test "v${version}" = "$TAG"
+      - name: Pack the release files
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          npx plugin-kit check --json > release/conformance.json
+          npm pack --pack-destination release
+          sha256sum release/*.tgz release/conformance.json > release/SHA256SUMS
+      - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh release create "$TAG" \
-            release/dist/index.js \
-            release/conformance-report.json \
-            release/SHA256SUMS \
-            --repo "$REPO" \
-            --verify-tag \
-            --title "$TAG" \
-            --generate-notes
+          gh release create "$TAG" release/*.tgz release/conformance.json release/SHA256SUMS --repo "$REPO" --verify-tag --title "$TAG" --generate-notes
