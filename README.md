@@ -19,12 +19,11 @@ Jira text is untrusted data, never instructions. This connector reads Jira only;
 
 ```json
 {
-  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>" }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v0.0.0" }]
 }
 ```
 
-The first release of this rebuilt plugin is `v0.0.0`, cut after the rebuild merges. Tags from before the rebuild are
-the previous plugin and are not compatible; install a tag from this rebuild once `v0.0.0` exists.
+Install the `v0.0.0` tag. Tags from before the rebuild are the previous plugin and are not compatible.
 
 ## Sign in
 
@@ -37,7 +36,7 @@ For several accounts, name them in `options.accounts`:
 {
   "plugins": [
     {
-      "package": "github:we-the-rebel-alliance/jira-plugin#v<version>",
+      "package": "github:we-the-rebel-alliance/jira-plugin#v0.0.0",
       "options": { "accounts": { "work": { "site": "2f1c9a3e-4b2d-4c1a-9f7e-8d6b5a4c3e21" }, "personal": {} } }
     }
   ]
@@ -162,8 +161,24 @@ None.
 | `UNAVAILABLE` | the provider could not be reached |
 <!-- /generated:errors -->
 
+## Troubleshooting
+
+- **`NEEDS_SIGN_IN`** — the alias's Jira sign-in is missing or expired. Run `/connect`, choose Jira for that alias, then
+  run `/jira` and follow its next step.
+- **`ACCOUNT_REQUIRED` / `ACCOUNT_UNKNOWN`** — pass `account` as one of the aliases `/jira` lists (`work`, `personal`, …).
+  A call with two aliases and no account is refused; so is an alias the plugin does not serve.
+- **`CURSOR_INVALID`** — the cursor belongs to another source, alias or scope, or it is malformed. Read again without a
+  cursor, or with `since`, and keep the new cursor with its alias.
+- **`UNAVAILABLE` with a `jira` or `jira-<alias>` entry** — OpenCode already has an MCP server at that name whose URL is
+  not Atlassian's, so the plugin adds nothing and calls nothing. Remove that entry, or set it to
+  `https://mcp.atlassian.com/v2/mcp?tools=all`, then reload OpenCode.
+- **`HOST_UNTESTED`** — the OpenCode release is outside `>=2.4.1 <2.5.0`. Use OpenCode 2.4.1.
+- **`/jira`** prints every alias's state, the agents that lack the access rules and the one next step; `status` is the
+  same answer over RPC.
+
 ## Docs
 
+- [Plugin contract](https://github.com/we-the-rebel-alliance/plugin-contract)
 - [Capabilities](docs/capabilities.md)
 - [Configuration](docs/configuration.md)
 - [Accounts](docs/accounts.md)

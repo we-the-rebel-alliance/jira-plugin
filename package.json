@@ -1,7 +1,7 @@
 {
   "name": "@we-the-rebel-alliance/jira-plugin",
   "version": "0.0.0",
-  "description": "Read Jira work items and activity and pass through Atlassian's Jira MCP tools, for OpenCode.",
+  "description": "Give an agent Jira work items, JQL, comments, boards, sprints, versions, filters and activity, with Atlassian's own Jira tools passed through.",
   "keywords": [
     "opencode",
     "opencode-plugin",
@@ -23,8 +23,7 @@
     "skills",
     "assets",
     "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
+    "LICENSE"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -564,5 +563,8 @@
     "events": {
       "account": {}
     }
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

@@ -1,5 +1,5 @@
 // Documentation is checked against the code, not against prose: the access table is compared with the contract's own
-// `effectFor` for every class and level, the install line names only a version placeholder and says the first release,
+// `effectFor` for every class and level, the install line names the released tag,
 // and model-facing text names no other product and no undeclared tool.
 import { readFileSync } from "node:fs"
 import { ACCESS_LEVELS, effectFor } from "@we-the-rebel-alliance/plugin-contract/access"
@@ -45,10 +45,9 @@ describe("the documented access table", () => {
 })
 
 describe("the install line", () => {
-  test("names the version placeholder and the first release, and claims no absence of releases", () => {
+  test("names the released tag and claims no absence of releases", () => {
     const text = read("README.md")
-    expect(text).toContain("github:we-the-rebel-alliance/jira-plugin#v<version>")
-    expect(text).toMatch(/first release of this rebuilt plugin is `v0\.0\.0`/i)
+    expect(text).toContain("github:we-the-rebel-alliance/jira-plugin#v0.0.0")
     expect(text).not.toMatch(/no release/i)
     expect(text).not.toMatch(/there is no release/i)
   })

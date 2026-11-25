@@ -42,7 +42,7 @@ describe("the packed tarball", () => {
   test("holds exactly the files the package declares, and the built entry", () => {
     const paths = packed.files.map((file) => file.path).sort()
     expect(paths).toEqual(
-      ["package.json", "README.md", "LICENSE", "CHANGELOG.md", "dist/index.js", "skills/jira/SKILL.md", "skills/jira-write/SKILL.md", "assets/icon.svg", "assets/icon-128.png", "assets/icon-256.png"].sort(),
+      ["package.json", "README.md", "LICENSE", "dist/index.js", "skills/jira/SKILL.md", "skills/jira-write/SKILL.md", "assets/icon.svg", "assets/icon-128.png", "assets/icon-256.png"].sort(),
     )
     expect(paths.some((path) => path.startsWith("fixtures/") || path.startsWith("node_modules/") || path.endsWith(".ts"))).toBe(false)
     expect(packed.size).toBeLessThan(200 * 1024)

@@ -16,7 +16,7 @@ The plugin's options, generated from `capabilities.options`.
 {
   "plugins": [
     {
-      "package": "github:we-the-rebel-alliance/jira-plugin#v<version>",
+      "package": "github:we-the-rebel-alliance/jira-plugin#v0.0.0",
       "options": {
         "access": "ask-changes",
         "accounts": { "work": { "site": "2f1c9a3e-4b2d-4c1a-9f7e-8d6b5a4c3e21" }, "personal": {} }

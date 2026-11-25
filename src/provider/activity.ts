@@ -432,7 +432,7 @@ export async function readProbe(read: Read, alias: string, input: unknown): Prom
   if (input !== undefined && input !== null && !isRecord(input)) {
     throw fail("INPUT_INVALID", "The probe input is not an object", 'Pass an empty object, or only "source".')
   }
-  const source = isRecord(input) ? input["source"] : undefined
+  const source = isRecord(input) ? input.source : undefined
   if (source !== undefined && source !== SOURCE) {
     throw fail("SOURCE_UNKNOWN", `This plugin lists only the source "${SOURCE}"`, `Leave "source" out, or pass "${SOURCE}".`)
   }

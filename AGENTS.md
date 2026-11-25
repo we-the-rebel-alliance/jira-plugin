@@ -81,9 +81,10 @@ scripts/build.mjs       the one build script
 - **One `register` call.** `register(ctx, manifest, handlers)` always builds the bus writer: `registration.bus` is
   present and every handler gets `call.bus`. Do not pass a flag, do not call `createBus`, and do not use
   `registration.events`.
-- **Status from the call.** `status` assembles `statusAnswer` from the manifest, the versions, each alias's signal,
-  `call.unguardedAgents()` and the account problems. Keep the call in `src/handlers/status.ts`'s one helper so a contract
-  freeze changes one function. Do not fill state after `register` returns, and do not read `call.access`.
+- **Status from the call.** `status` passes `await call.unguardedAgents()` (its result: agents, or an error) and the
+  account problems to `statusAnswer`; it keeps no state of its own. The `/jira` command view is not a handler: it
+  derives the same rules with `accessLevel(options)` and `rulesFor(manifest, level, aliases)` before calling
+  `unguardedAgents`. `call.access`, `Registration.access` and `Registration.events` do not exist.
 - **Reuse the output schemas.** `STATUS_SCHEMA` from `accounts` is the `status` answer; `PAGE_SCHEMA` and `PROBE_SCHEMA`
   from `events` are `events_list` and `probe`. Copying those shapes into the plugin is drift.
 - **The bus.** Emit `account` from the watcher when an alias's MCP server changes state. There is no `changed`: every

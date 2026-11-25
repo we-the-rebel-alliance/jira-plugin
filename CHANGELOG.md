@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.0.0] - 2026-11-25
+## 0.0.0 (2026-11-25)
 
 The plugin is ready for `v0.0.0`: the greenfield rebuild onto plugin-contract v0.
 
