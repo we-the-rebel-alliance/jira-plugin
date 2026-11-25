@@ -30,19 +30,14 @@ jobs:
       - run: npm run check
       - name: Conformance report
         run: npx plugin-kit conformance --json > conformance-report.json
-      - name: Bundle the built entry
-        run: |
-          set -euo pipefail
-          bundle="jira-dist-${GITHUB_REF_NAME}.tar.gz"
-          tar -czf "$bundle" dist
-          sha256sum "$bundle" dist/index.js > SHA256SUMS
+      - name: Checksums
+        run: sha256sum dist/index.js conformance-report.json > SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh release create "$GITHUB_REF_NAME" \
-            "jira-dist-${GITHUB_REF_NAME}.tar.gz" \
             dist/index.js \
             conformance-report.json \
             SHA256SUMS \
