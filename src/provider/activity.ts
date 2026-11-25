@@ -41,9 +41,6 @@ export const SEARCH_TOOL = "searchJiraIssuesUsingJql"
 export const SETTLE_MS = 5 * 60_000
 /** A listing without `since` starts this many hours before now: the plugin's own default. */
 export const FIRST_RUN_HOURS = 24
-/** The most items one page lists, and its default: the plugin's own bounds, which the handler schema carries too. */
-export const LIMIT_MAX = 500
-export const LIMIT_DEFAULT = 100
 /** How many minutes before the cursor the search window opens: room for the clocks of this machine and Atlassian's. */
 export const MARGIN_MINUTES = 2
 /** Work items per search page, Atlassian's most. */

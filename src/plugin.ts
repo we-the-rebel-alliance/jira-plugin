@@ -1,4 +1,5 @@
 import { Plugin } from "@opencode/plugin"
+import { accessLevel, rulesFor } from "@we-the-rebel-alliance/plugin-contract/access"
 import { assertHost, register } from "@we-the-rebel-alliance/plugin-contract/register"
 import { accountPlan, classifyServers, registerJiraAccounts, serverNames } from "./accounts.ts"
 import { agentsFromHost, registerJiraCommand } from "./command.ts"
@@ -68,7 +69,10 @@ export function createJiraPlugin(seam: JiraSeam = {}) {
       const registration = await register(ctx, manifest, handlers)
 
       const watcher = watchAccountStatus(ctx, (event, data) => registration.bus.emit(event, data), { aliases, names })
-      const command = await registerJiraCommand(ctx, async () => buildStatus(deps, await agentsFromHost(ctx, registration.access.rules)))
+      // The command view is not a handler: it derives the same rules from the public access functions.
+      const level = accessLevel(options)
+      const rules = level.ok ? rulesFor(manifest, level.value, aliases) : []
+      const command = await registerJiraCommand(ctx, async () => buildStatus(deps, await agentsFromHost(ctx, rules)))
 
       return async () => {
         await watcher.stop()
