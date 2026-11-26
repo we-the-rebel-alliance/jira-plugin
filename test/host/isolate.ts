@@ -1,19 +1,21 @@
-// Imported first, before anything loads OpenCode. OpenCode derives its global paths from the environment, and under
-// Bun os.homedir() ignores a changed HOME, so the whole environment is replaced: HOME, OPENCODE_TEST_HOME, XDG_* and
-// TMPDIR point into a fresh temp root, nothing else is inherited (no parent OpenCode, provider key or proxy), and the
-// working directory moves there too, because the host also opens a location at it. The root is a git repository under
-// the system's /tmp, never under TMPDIR or HOME: OpenCode looks for `.opencode` folders and project config upwards
-// from a location, and stops at the repository's root, so it never finds the agents or skills of whoever runs the test.
+// Imported first by the real-host test, before anything loads OpenCode. OpenCode derives its global paths from the
+// environment, so HOME, OPENCODE_TEST_HOME, the XDG folders and TMPDIR point into a fresh temp root, and the working
+// directory moves there. The root is a git repository under the system /tmp, so OpenCode's upward search for
+// `.opencode` folders stops at it and never finds the config or skills of whoever runs the test.
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, realpathSync } from "node:fs"
 import { join } from "node:path"
 
-export const ROOT = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "jira-host-")))
+export const ROOT = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "jira-skills-")))
 const init = spawnSync("git", ["init", "--quiet", ROOT], { encoding: "utf8" })
 if (init.status !== 0) throw new Error(`git init ${ROOT} failed: ${init.stderr}`)
+
 const home = join(ROOT, "home")
-const KEEP = ["PATH", "LANG", "TZ", "TERM"]
-for (const key of Object.keys(process.env)) if (!KEEP.includes(key) && !key.startsWith("BUN_")) delete process.env[key]
+mkdirSync(home, { recursive: true })
+mkdirSync(join(ROOT, "tmp"), { recursive: true })
+for (const key of Object.keys(process.env)) {
+  if (key.startsWith("OPENCODE_") || key.startsWith("XDG_")) delete process.env[key]
+}
 Object.assign(process.env, {
   HOME: home,
   OPENCODE_TEST_HOME: home,
@@ -23,5 +25,4 @@ Object.assign(process.env, {
   XDG_STATE_HOME: join(home, ".local", "state"),
   TMPDIR: join(ROOT, "tmp"),
 })
-for (const dir of [home, join(ROOT, "tmp")]) mkdirSync(dir, { recursive: true })
 process.chdir(home)

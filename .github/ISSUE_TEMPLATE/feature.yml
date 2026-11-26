@@ -1,0 +1,41 @@
+name: Feature request
+description: A method, an events source or a Jira capability the plugin should add.
+title: "feat: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new capability starts in `capabilities` in package.json and needs a handler, tests and a recorded fixture.
+        Read AGENTS.md before you open the pull request.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of capability
+      options:
+        - A method of the plugin's own (such as a new read)
+        - A pass-through Atlassian MCP tool
+        - An events source or a field on jira.activity
+        - An account or site option
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What a person cannot do today with Jira, and why this plugin is the right owner. Name the Jira key or workflow (such as PROJ-42, a sprint or a board) you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposal
+      description: The method or vendor tool (such as getJiraIssue or searchJiraIssuesUsingJql), its class, the provider operations it needs, and what its answer looks like.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk and confirmation
+      description: For a Jira change, say who it reaches (comments and field edits email watchers) and how the access level or the vendor tool confirms it. For a read, say what it reads.
+    validations:
+      required: false

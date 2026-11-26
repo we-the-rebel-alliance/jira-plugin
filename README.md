@@ -1,237 +1,194 @@
-# Jira for OpenCode
+# Jira
 
-Read and change your Jira work items from OpenCode — keys such as `PROJ-42`, JQL, comments, logged time, boards,
-sprints, versions and filters — through Atlassian's official MCP server. OpenCode owns the connection, the sign-in and
-the stored credentials; this plugin registers the server, adds default permission rules, a status command, a status
-dialog, two skills and a tools RPC for scripts, and contributes the `jira.activity` source.
+Read Jira work items and activity, and pass through Atlassian's Jira MCP tools, for OpenCode. The plugin serves several
+accounts at once: one vendor MCP server per alias, each with its own sign-in. The plugin holds no credential of its own.
 
-Every tool is allowed by default. A change, a delete or an attachment download runs without a prompt unless you
-restrict it; [Permissions](#permissions) shows the option that does.
+## What it does
 
-Unofficial; not affiliated with Atlassian. Jira is a trademark of Atlassian Pty Ltd; this unofficial plugin is not
-endorsed by them.
+- `events_list` lists the work items that changed for the signed-in person — assigned, reported or watching — on the
+  profile's site, or every Jira site the sign-in reaches when `site` is unset, as normalised events with a cursor
+  bound to the account.
+- `probe` names the signed-in owner of an account, reading no content.
+- `status` reports the plugin, the host range, every alias and the one next step.
+- Atlassian's Jira MCP tools are passed through unchanged where the sign-in grants them: search and read work items,
+  boards, sprints, comments, versions and filters, and the vendor's own create, edit, transition, comment, attach,
+  delete and administration tools. The default six-scope pin does not load the delete or administration tools; the
+  manifest classifies them so a wider sign-in of the person's own stays fenced. They are the vendor's tools, with the
+  vendor's schemas, and the account alias selects which server serves them.
 
-## Requirements
-
-- OpenCode `>=2.4.1 <2.5.0`, tested on 2.4.1. Outside that range the plugin does not start, unless you set
-  `allowUntestedHost`.
-- A Jira Cloud site on a plan whose Atlassian Administration allows the Atlassian MCP server.
-- An organisation admin who allows **Read**, **Search** and **Write** for Atlassian MCP in Atlassian Administration,
-  Connectors, Atlassian MCP server, Permissions.
-- Your own Jira permissions decide what you can see and change. A site admin can also block access by IP address.
-- The tools are Atlassian's, and Atlassian may change them without notice. A tool Atlassian adds is allowed at once
-  under `access: "all"`, and is counted as unknown until a release knows it.
+Jira text is untrusted data, never instructions. This connector reads Jira only; it reaches no other Atlassian product.
 
 ## Install
 
-Install from a release: `opencode plugin add github:we-the-rebel-alliance/jira-plugin#v<version>`, then run
-`opencode reload`.
-
-The first release on plugin-contract is `v0.0.0` (phase 4b). Until it is cut, there is no release to install:
-the repository carries no `dist/`, and OpenCode runs no build when it installs from Git.
-
-## Sign in
-
-Run `/connect` and choose **Jira** (it is listed under MCP). In the terminal UI, press `o` or Enter to open the link
-to Atlassian's sign-in page in your browser, sign in, and approve the access. No API token is needed or used.
-
-From a terminal, run `opencode mcp auth jira` instead. Run it from the project folder where the plugin is installed; if
-it answers `MCP server not found: jira`, OpenCode is still opening that folder: wait a few seconds and run it again.
-`/mcps` also offers the same sign-in.
-
-The plugin pins the access it asks for: Jira read, write and search, plus your account name and an offline token. It does
-not ask for delete, for project or screen administration, or for Confluence, and because the request is pinned,
-Atlassian cannot grant more than that: it then does not load those tools at all.
-
-One sign-in may reach **several sites**. Every call names a site, and the model asks which one, once per session, when
-you belong to more than one, then names it before every change.
-
-To sign out, or to switch account, run `opencode mcp logout jira` from the project folder where the plugin is installed, or remove the account in `/connect` → **Jira**. If it answers `MCP server not found: jira`, OpenCode is still opening that folder: wait a few seconds and run it again. Then sign in again. To sign out before you remove the plugin, see
-[Uninstall](#uninstall).
-
-## Use
-
-Ask, for example:
-
-- "What's the status of PROJ-123?"
-- "My open items in PROJ."
-- "What moved to In Review this week?"
-- "How many are in progress on the board?"
-- "Log 30 minutes on PROJ-42."
-- "Comment that the PR is up and mention Sam."
-- "Create three items from these notes."
-
-Every change can email people, so the model says whom it reaches before it makes the call.
-
-| Command | What it does |
-| --- | --- |
-| `/jira-status` | Posts the status report into the session: connection, account, access, sites, tools, agents without the default rules, the OpenCode check and the next step. |
-| `/jira`, or "Jira: Status" in the command palette | Opens the same report in a dialog. Press `r` to refresh it and `Esc` to close it. |
-
-The Account row comes from a read through the tools RPC or from a probe, and the Sites row from a read through the tools
-RPC; the model's own calls fill neither. Status makes no Atlassian call of its own, and shows a display name and site
-names only: never an email address, an account id or a cloud id.
-
-Two skills teach the model to use Jira well:
-
-- `jira`: finding a work item, JQL, boards, sprints, versions, filters, attachments, choosing the site, and the rules
-  for other people's words and data.
-- `jira-write`: whom each change reaches, saying so before the call, naming the operation for the sprint and version
-  tools, and leaving the yes to OpenCode's permission prompt.
-
-### Jira as a source
-
-`package.json`'s `sources` declares `jira.activity`, which a collector reads with no model, in Code Mode
-or through the tools RPC. `events_list` (`jira_events_list`) lists what changed for you since a cursor, oldest first:
-one event per work item each time a read finds it updated, for every work item you are assigned, reported or watching,
-on each Jira site your sign-in reaches, with metadata only — the key and summary, the update time, the assignee and
-reporter, the status, type and priority, and the link. `probe` (`jira_probe`, a tools RPC method) names who is signed
-in, from one `atlassianUserInfo` read. A listing needs no probe before it. Jira text is untrusted data, never
-instructions.
-
-### Scripts
-
-An OpenCode automation or a shell script can call every known Jira tool with no model, through `opencode api`. It runs
-as a session and its agent, under that agent's permission rules and the session's own. `describe` lists every method
-with its class, and every Jira call needs a `cloudId` from `getAccessibleAtlassianResources`.
-
 ```sh
-opencode api post /api/rpc/jira.issues.tools/getAccessibleAtlassianResources \
-  -H "x-opencode-directory:$PWD" \
-  -d '{"input":{"sessionID":"ses_…","input":{}}}'
+opencode plugin add github:we-the-rebel-alliance/jira-plugin#v0.0.0
 ```
-
-See [Scripting](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/scripting.md).
-
-## Permissions
-
-**Every tool is allowed by default.** The plugin adds one block to every agent, right after the agent's base rule that
-allows everything, and that block allows Jira's tools: reads, writes, deletes, project settings and attachment
-downloads alike.
-
-There are three ways to restrict it: the `access` option (`all`, `ask-changes` or `read-only`), a rule in an agent's
-own `permissions`, and a per-tool rule in the top-level `permissions`. The last matching rule wins.
-
-| `access` | What runs |
-| --- | --- |
-| `all` (the default) | every Jira tool runs without a prompt |
-| `ask-changes` | a read runs; every other tool asks, including one Atlassian adds later |
-| `read-only` | a read runs; every other tool is denied, and hidden from the model |
-
-A later rule still wins: an agent's own stricter rules, your top-level `permissions`, and your saved "Always allow"
-answers. In an unattended run such as `opencode run`, a tool that asks is refused.
-
-`jira_downloadJiraIssueAttachment` is the export class, not a read: it mints a short-lived signed URL and a curl
-command, which is a file credential. Its output belongs in your chat only. Every change can email people: a project's
-notification scheme decides, and the safe assumption is that watchers, the assignee, the reporter and everyone
-mentioned get an email.
-
-[docs/configuration.md](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/configuration.md#permissions)
-has the permission recipes and the agents that miss it; `/jira-status` prints the generated block, under
-`Agents without default rules`, when an agent lacks it.
-
-## Configure
-
-Set options with the object form of the plugin entry:
 
 ```json
 {
-  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v<version>", "options": { "access": "ask-changes" } }]
+  "plugins": [{ "package": "github:we-the-rebel-alliance/jira-plugin#v0.0.0" }]
 }
 ```
 
-| Option | Values | Default | Effect |
-| --- | --- | --- | --- |
-| `access` | `"all"`, `"ask-changes"` or `"read-only"` | `"all"` | How much the default rules restrict; see [Permissions](#permissions). |
-| `allowUntestedHost` | `true` or `false` | `false` | Starts on an OpenCode version outside `>=2.4.1 <2.5.0`, with a warning in status. |
+Install the `v0.0.0` tag. Tags from before the rebuild are the previous plugin and are not compatible.
 
-[docs/configuration.md](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/configuration.md) has the
-details, including your own `mcp.servers.jira` entry, an API-token entry for a headless machine and every error.
+## Sign in
+
+With no `accounts` option the plugin uses one account, the `default` alias, whose MCP server is `jira`. Run `/connect`
+and choose Jira.
+
+For several accounts, name them in `options.accounts`:
+
+```json
+{
+  "plugins": [
+    {
+      "package": "github:we-the-rebel-alliance/jira-plugin#v0.0.0",
+      "options": { "accounts": { "work": { "site": "2f1c9a3e-4b2d-4c1a-9f7e-8d6b5a4c3e21" }, "personal": {} } }
+    }
+  ]
+}
+```
+
+The alias `work` is the MCP server `jira-work`, and `personal` is `jira-personal`; each has its own sign-in. See
+[Accounts](docs/accounts.md).
+
+## Access
+
+`access` is `all` (the default), `ask-changes` or `read-only`. It decides what every method and every one of the
+account's pass-through MCP tools may do. The class table and the per-alias rules are in
+[Configuration](docs/configuration.md#access).
+
+## Capabilities
+
+<!-- generated:capabilities -->
+### Methods
+
+| Method | Class | Accounts | Operations |
+|---|---|---|---|
+| `status` | read | none | — |
+| `probe` | read | optional | `atlassianUserInfo` |
+| `events_list` | read | optional | `atlassianUserInfo`, `getAccessibleAtlassianResources`, `searchJiraIssuesUsingJql` |
+| `mcp:atlassianUserInfo` | read | none | `atlassianUserInfo` |
+| `mcp:getAccessibleAtlassianResources` | read | none | `getAccessibleAtlassianResources` |
+| `mcp:getContentFormatGuide` | read | none | `getContentFormatGuide` |
+| `mcp:getJiraBoardConfig` | read | none | `getJiraBoardConfig` |
+| `mcp:getJiraBoardIssueData` | read | none | `getJiraBoardIssueData` |
+| `mcp:getJiraBoardSprintData` | read | none | `getJiraBoardSprintData` |
+| `mcp:getJiraCurrentUser` | read | none | `getJiraCurrentUser` |
+| `mcp:getJiraEntityProperty` | read | none | `getJiraEntityProperty` |
+| `mcp:getJiraIssue` | read | none | `getJiraIssue` |
+| `mcp:getJiraIssueTypeMetaWithFields` | read | none | `getJiraIssueTypeMetaWithFields` |
+| `mcp:getJiraProjectVersionRelatedWork` | read | none | `getJiraProjectVersionRelatedWork` |
+| `mcp:getJiraProjectVersions` | read | none | `getJiraProjectVersions` |
+| `mcp:getJiraScreen` | read | none | `getJiraScreen` |
+| `mcp:getJiraUser` | read | none | `getJiraUser` |
+| `mcp:getJiraWorkflowEditorLink` | read | none | `getJiraWorkflowEditorLink` |
+| `mcp:getJiraWorkflows` | read | none | `getJiraWorkflows` |
+| `mcp:listJiraBoardSprints` | read | none | `listJiraBoardSprints` |
+| `mcp:listJiraBoards` | read | none | `listJiraBoards` |
+| `mcp:listJiraDashboards` | read | none | `listJiraDashboards` |
+| `mcp:listJiraFilters` | read | none | `listJiraFilters` |
+| `mcp:listJiraIssueAssignableUsers` | read | none | `listJiraIssueAssignableUsers` |
+| `mcp:listJiraIssueChangelogs` | read | none | `listJiraIssueChangelogs` |
+| `mcp:listJiraIssueComments` | read | none | `listJiraIssueComments` |
+| `mcp:listJiraIssueLinkTypes` | read | none | `listJiraIssueLinkTypes` |
+| `mcp:listJiraIssueRemoteIssueLinks` | read | none | `listJiraIssueRemoteIssueLinks` |
+| `mcp:listJiraIssueTransitions` | read | none | `listJiraIssueTransitions` |
+| `mcp:listJiraIssueWorklogs` | read | none | `listJiraIssueWorklogs` |
+| `mcp:listJiraProjectComponents` | read | none | `listJiraProjectComponents` |
+| `mcp:listJiraProjectIssueTypesMetadata` | read | none | `listJiraProjectIssueTypesMetadata` |
+| `mcp:listJiraProjects` | read | none | `listJiraProjects` |
+| `mcp:listJiraStatuses` | read | none | `listJiraStatuses` |
+| `mcp:lookupJiraAccountId` | read | none | `lookupJiraAccountId` |
+| `mcp:searchJiraIssuesUsingJql` | read | none | `searchJiraIssuesUsingJql` |
+| `mcp:addOrEditJiraIssueComment` | send | none | `addOrEditJiraIssueComment` |
+| `mcp:addOrEditJiraIssueWorklog` | write | none | `addOrEditJiraIssueWorklog` |
+| `mcp:convertJiraIssueHierarchy` | write | none | `convertJiraIssueHierarchy` |
+| `mcp:createJiraBoard` | write | none | `createJiraBoard` |
+| `mcp:createJiraIssue` | write | none | `createJiraIssue` |
+| `mcp:createJiraIssueLink` | write | none | `createJiraIssueLink` |
+| `mcp:createJiraIssueRemoteIssueLink` | write | none | `createJiraIssueRemoteIssueLink` |
+| `mcp:editJiraEntityProperty` | write | none | `editJiraEntityProperty` |
+| `mcp:editJiraIssue` | write | none | `editJiraIssue` |
+| `mcp:manageJiraProjectVersion` | write | none | `manageJiraProjectVersion` |
+| `mcp:manageJiraProjectVersionRelatedWork` | write | none | `manageJiraProjectVersionRelatedWork` |
+| `mcp:manageJiraSprint` | write | none | `manageJiraSprint` |
+| `mcp:transitionJiraIssue` | write | none | `transitionJiraIssue` |
+| `mcp:uploadAttachmentToJiraIssue` | write | none | `uploadAttachmentToJiraIssue` |
+| `mcp:watchJiraIssue` | write | none | `watchJiraIssue` |
+| `mcp:deleteJiraComment` | delete | none | `deleteJiraComment` |
+| `mcp:deleteJiraIssue` | delete | none | `deleteJiraIssue` |
+| `mcp:deleteJiraIssueAttachment` | delete | none | `deleteJiraIssueAttachment` |
+| `mcp:createJiraProject` | admin | none | `createJiraProject` |
+| `mcp:updateJiraProject` | admin | none | `updateJiraProject` |
+| `mcp:updateJiraScreen` | admin | none | `updateJiraScreen` |
+| `mcp:downloadJiraIssueAttachment` | export | none | `downloadJiraIssueAttachment` |
+
+### Sources
+
+| Source | Kind | Reads or output | Method | Cost |
+|---|---|---|---|---|
+| `jira.activity` | events | `issue` | `events_list` | free |
+
+### Actions
+
+None.
+
+### Bus events
+
+`rpc.jira.account`
+<!-- /generated:capabilities -->
 
 ## Errors
 
-Every error reads `CODE: What happened. Next step: What to do.` The codes are the plugin's own one table. `setup` and
-`status` codes come from the plugin; `rpc` codes are a refusal from the tools RPC for scripts, which
-[Scripting](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/scripting.md#errors) explains in detail.
-
-| Code | Surface | When |
-| --- | --- | --- |
-| `HOST_UNTESTED` | setup | OpenCode is outside the supported range and `allowUntestedHost` is not set. |
-| `OPTIONS_INVALID` | setup | An option is unknown or has a wrong value. |
-| `SKILLS_INVALID` | setup | A skill file is missing or broken; the plugin still starts. |
-| `SERVER_NOT_REGISTERED` | setup | The `jira` server could not be registered. |
-| `RULES_NOT_ADDED` | setup | The default permission rules could not be added. |
-| `STATUS_UNAVAILABLE` | status | The status could not be read, or the plugin is not running. |
-| `SESSION_UNKNOWN` | rpc | The session does not exist in this location. |
-| `SESSION_AGENT_REQUIRED` | rpc | The session names no agent, or one that does not exist. |
-| `PERMISSION_DENIED` | rpc | The last matching rule is an `ask` or a `deny`; refused before dispatch. |
-| `SERVER_CONFLICT` | rpc | `mcp.servers.jira` is defined at another URL. |
-| `AUTH_REQUIRED` | rpc | The `jira` server needs a sign-in. |
-| `CONNECTING` | rpc | The `jira` server is still connecting. |
-| `CONNECTION_FAILED` | rpc | The `jira` server could not connect. |
-| `DISABLED` | rpc | The `jira` server is disabled. |
-| `NOT_REGISTERED` | rpc | The `jira` server is not registered. |
-| `TOOL_UNAVAILABLE` | rpc | The server is connected but OpenCode does not list the tool. |
-| `UPSTREAM_ERROR` | rpc | Atlassian answered with an error, such as an invalid input or a rate limit. |
-| `CANCELLED` | rpc | The request was cancelled. |
-
-The status RPC's own error is `unavailable`, with a next step, when the status cannot be read.
+<!-- generated:errors -->
+| Code | Meaning |
+|---|---|
+| `NEEDS_SIGN_IN` | the account is not signed in |
+| `SCOPE_MISSING` | the call needs a scope the person has not confirmed |
+| `ACCOUNT_REQUIRED` | the plugin serves several accounts and the call names none |
+| `ACCOUNT_UNKNOWN` | the call names an alias the plugin does not serve |
+| `ACCOUNT_MISMATCH` | the item belongs to another account |
+| `CURSOR_INVALID` | the cursor is malformed, or belongs to another source, account or scope |
+| `CURSOR_EXPIRED` | the provider no longer keeps the history the cursor names |
+| `RATE_LIMITED` | the provider asked the plugin to slow down |
+| `BUDGET_EXCEEDED` | the read would cost more than the person allows |
+| `SOURCE_DISABLED` | the person turned this source or action off |
+| `TOO_LARGE` | the answer is larger than the source's maxBytes |
+| `INPUT_INVALID` | the input does not match the method's schema |
+| `SOURCE_UNKNOWN` | the plugin declares no such source |
+| `SCHEMA_VIOLATION` | an answer does not keep the contract's shape |
+| `PERMISSION_DENIED` | the person's grant does not cover the call |
+| `PLAN_INVALID` | the plan is missing, or belongs to another method |
+| `PLAN_USED` | the plan was already used by an earlier commit |
+| `GRANT_INVALID` | the action grant did not verify, or was already spent |
+| `HOST_UNTESTED` | OpenCode is outside the plugin's tested range |
+| `OPTIONS_INVALID` | the plugin's options do not match their schema |
+| `UNAVAILABLE` | the provider could not be reached |
+<!-- /generated:errors -->
 
 ## Troubleshooting
 
-Run `/jira-status` first. Its last line is the next step.
+- **`NEEDS_SIGN_IN`** — the alias's Jira sign-in is missing or expired. Run `/connect`, choose Jira for that alias, then
+  run `/jira` and follow its next step.
+- **`ACCOUNT_REQUIRED` / `ACCOUNT_UNKNOWN`** — pass `account` as one of the aliases `/jira` lists (`work`, `personal`, …).
+  A call with two aliases and no account is refused; so is an alias the plugin does not serve.
+- **`CURSOR_INVALID`** — the cursor belongs to another source, alias or scope, or it is malformed. Read again without a
+  cursor, or with `since`, and keep the new cursor with its alias.
+- **`UNAVAILABLE` with a `jira` or `jira-<alias>` entry** — OpenCode already has an MCP server at that name whose URL is
+  not Atlassian's, so the plugin adds nothing and calls nothing. Remove that entry, or set it to
+  `https://mcp.atlassian.com/v2/mcp?tools=all`, then reload OpenCode.
+- **`HOST_UNTESTED`** — the OpenCode release is outside `>=2.4.1 <2.5.0`. Use OpenCode 2.4.1.
+- **`/jira`** prints every alias's state, the agents that lack the access rules and the one next step; `status` is the
+  same answer over RPC.
 
-| Status or error | What to do |
-| --- | --- |
-| Connection: sign-in required | Run `/connect` and choose Jira, then press `o` or Enter to open the link. In a terminal, `opencode mcp auth jira` opens it automatically: run it from the project folder, and if it answers `MCP server not found: jira`, wait a few seconds and run it again. |
-| Connection: connecting | Wait a few seconds, then run `/jira-status` again. |
-| Connection: failed | Check your network, then run `/jira-status` again. With your own `mcp.servers.jira` that has `"oauth": false`, check the API token in its headers. |
-| Connection: disabled | Enable `jira` in `/mcps`, or remove `"disabled": true` from `mcp.servers.jira` in `opencode.json`. |
-| Connection: not configured | An organisation policy (`mcp.use`) or another plugin removes the `jira` server. Ask your administrator, then restart OpenCode. |
-| Connection: conflict | Your config has an `mcp.servers.jira` entry with a URL other than `https://mcp.atlassian.com/v2/mcp?tools=all`. A plain `/v2/mcp` is the meta-tool server, not this one. Point it at the plugin's URL or remove it, then restart OpenCode. |
-| Tools: none listed yet | Jira connected moments ago and is still listing its tools. Run `/jira-status` again, or press `r` in the dialog, in a few seconds. |
-| Tools: 0 available | An organisation admin has not allowed Read and Search for Atlassian MCP. See [Requirements](#requirements). |
-| Tools: not granted by scope | The three workflow and screen reads sit in Atlassian's `manage_jira` group, which this plugin does not request. Nothing is wrong. |
-| Tools: unknown | Atlassian added tools the plugin does not know yet. Under `access: "all"` they run at once, `ask-changes` asks, and `read-only` denies them. |
-| Rate limited | Atlassian publishes `Retry-After` and `X-RateLimit-*`. Wait the seconds it names, and make fewer calls at once. |
-| Signed in to the wrong Atlassian account | Remove the account in `/connect` → Jira, or run `opencode mcp logout jira` from the project folder; if it answers `MCP server not found: jira`, wait a few seconds and run it again. Then sign in again. |
-| A skill seems ignored, and status names a skill to rename or move | A skill of yours with the same id, such as `jira`, replaces the plugin's. Rename or move it. |
-| `/jira` is missing | The plugin did not start. Run `/plugins` to see the error. |
+## Docs
 
-## Known limits
-
-- **The tool table comes from Atlassian's docs.** Each class is a judgement from Atlassian's description of the tool. A
-  tool Atlassian adds is allowed at once and counted as unknown. `npm run drift` compares a saved list with the table,
-  and `CONTRIBUTING.md` has the steps.
-- **A script's read can cross projects.** A script's session may belong to another directory than the OpenCode server
-  answering it, and the read then runs under the serving location's agent rules; only a `deny` is refused in between.
-  Run scripts in the project whose agent you mean. This is in the module shared with the other plugins, not in this
-  one.
-- Updates are not automatic for a Git install, and `opencode plugin update` and `opencode plugin check` do not work on
-  one: remove the old entry and add the new one.
-
-## Uninstall
-
-Sign out while the plugin is still installed: once it is removed, OpenCode no longer knows the `jira` server and the
-sign-in stays in OpenCode's credential store.
-
-1. Sign out: remove the account in `/connect` → **Jira**, or run `opencode mcp logout jira` from the project folder
-   where the plugin is installed. If it answers `MCP server not found: jira`, OpenCode is still opening that folder:
-   wait a few seconds and run it again.
-2. Check: `opencode auth list` no longer lists **Jira**.
-3. Remove the plugin: `opencode plugin remove github:we-the-rebel-alliance/jira-plugin#v<version>`, then `opencode reload`.
-   `opencode mcp list` no longer lists `jira`.
-4. Remove any Jira rules you copied into your agents' own `permissions`.
-
-An organisation admin can also turn Atlassian MCP off for the whole organisation.
-
-## Links
-
-- [Configuration](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/configuration.md)
-- [Scripting](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/scripting.md)
-- [Architecture](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/docs/architecture.md)
-- [Contributing](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/CONTRIBUTING.md)
-- [Security](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/SECURITY.md)
-- [Changelog](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/CHANGELOG.md)
-- [MIT license](https://github.com/we-the-rebel-alliance/jira-plugin/blob/master/LICENSE)
-- [Atlassian's supported tools](https://support.atlassian.com/atlassian-ai-gateway/docs/supported-tools/)
+- [Plugin contract](https://github.com/we-the-rebel-alliance/plugin-contract)
+- [Capabilities](docs/capabilities.md)
+- [Configuration](docs/configuration.md)
+- [Accounts](docs/accounts.md)
+- [Automations](docs/automations.md)
+- [Architecture](docs/architecture.md)
+- [Security](docs/security.md)

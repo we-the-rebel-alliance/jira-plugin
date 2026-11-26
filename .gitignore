@@ -1,9 +1,8 @@
 node_modules/
-dist/
 *.tgz
 .env
 .env.*
 *.log
 .DS_Store
-# The conformance report npm run conformance writes; the release attaches its own.
+# The conformance report a release attaches; never committed.
 reports/
