@@ -42,7 +42,7 @@ SOFTWARE.
 
 The contract's dist/ bundles these packages and this data:
 
-### zod 4.6.7 (MIT)
+## zod 4.6.7 (MIT)
 
 MIT License
 
@@ -66,7 +66,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-### Public Suffix List (MPL-2.0)
+## Public Suffix List (MPL-2.0)
 
 The conformance kit bundles the Public Suffix List, ICANN and PRIVATE sections, from
 https://publicsuffix.org/list/public_suffix_list.dat.
